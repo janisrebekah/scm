@@ -1,0 +1,60 @@
+from fastapi import APIRouter
+
+from app.schemas.transaction import (
+    TransactionCreate,
+    AdjustmentCreate,
+    TransactionResponse
+)
+
+from app.services.transaction_service import (
+    record_sale,
+    record_consumption,
+    record_receipt,
+    record_adjustment
+)
+
+
+router = APIRouter(
+    prefix="/api/transactions",
+    tags=["Transactions"]
+)
+
+
+@router.post("/sale", response_model=TransactionResponse)
+def sale(transaction: TransactionCreate):
+
+    return record_sale(
+        product_id=transaction.product_id,
+        quantity=transaction.quantity,
+        reason=transaction.reason
+    )
+
+
+@router.post("/consumption", response_model=TransactionResponse)
+def consumption(transaction: TransactionCreate):
+
+    return record_consumption(
+        product_id=transaction.product_id,
+        quantity=transaction.quantity,
+        reason=transaction.reason
+    )
+
+
+@router.post("/receipt", response_model=TransactionResponse)
+def receipt(transaction: TransactionCreate):
+
+    return record_receipt(
+        product_id=transaction.product_id,
+        quantity=transaction.quantity,
+        reason=transaction.reason
+    )
+
+
+@router.post("/adjustment", response_model=TransactionResponse)
+def adjustment(transaction: AdjustmentCreate):
+
+    return record_adjustment(
+        product_id=transaction.product_id,
+        quantity=transaction.quantity,
+        reason=transaction.reason
+    )
