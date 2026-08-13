@@ -4,6 +4,8 @@ from fastapi import HTTPException
 
 from app.database import supabase
 from app.services.alert_service import evaluate_stock
+from app.services.reorder_service import generate_reorder_recommendation
+from app.services.notification_service import send_alert_notification
 
 
 def _get_product(product_id: UUID):
@@ -90,9 +92,31 @@ def _record_transaction(
     transaction_data = transaction_response.data[0]
 
     # 7. Evaluate stock after transaction
-    evaluate_stock(product_id)
+    alert_result = evaluate_stock(product_id)
 
-    # 8. Return transaction
+    # 8. Evaluate reorder recommendation based on current stock state
+    reorder_result = None
+    if new_stock <= product["minimum_threshold"]:
+        reorder_result = generate_reorder_recommendation(product_id)
+
+    # 9. Send notification if an alert was created
+    notification_result = None
+    if alert_result:
+        # Re-fetch product to get updated current_stock
+        updated_product = _get_product(product_id)
+        notification_result = send_alert_notification(
+            alert=alert_result,
+            product=updated_product,
+            reorder_recommendation=reorder_result,
+        )
+
+    # 10. Return transaction with context
+    transaction_data["previous_stock"] = current_stock
+    transaction_data["new_stock"] = new_stock
+    transaction_data["alert"] = alert_result
+    transaction_data["reorder_recommendation"] = reorder_result
+    transaction_data["notification"] = notification_result
+
     return transaction_data
 
 

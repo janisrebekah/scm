@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from uuid import UUID
 from datetime import datetime
+from typing import Any
 
 
 class TransactionCreate(BaseModel):
@@ -22,3 +23,10 @@ class TransactionResponse(BaseModel):
     quantity: int
     reason: str | None
     created_at: datetime
+
+    # Enriched context from post-transaction evaluation
+    previous_stock: int | None = None
+    new_stock: int | None = None
+    alert: dict[str, Any] | None = None
+    reorder_recommendation: dict[str, Any] | None = None
+    notification: dict[str, Any] | None = None
