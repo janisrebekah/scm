@@ -157,7 +157,7 @@ function App() {
       case 'simulator':
         return <Simulator products={data.products} onRefresh={loadDashboard} />;
       case 'inventory':
-        return <InventoryOverview products={data.products} />;
+        return <InventoryOverview products={data.products} onRefresh={loadDashboard} />;
       case 'alerts':
         return <ActiveAlerts alerts={data.active_alerts} />;
       case 'reorder':

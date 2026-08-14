@@ -1,37 +1,51 @@
 /* eslint-disable react/prop-types */
-import { useState } from 'react';
-import { postSale, postConsumption, postReceipt, postAdjustment } from '../api';
+import { useState, useEffect, useCallback } from 'react';
+import { postIncoming, postOutgoing, fetchTransactions } from '../api';
 import Icon from '../components/Icons';
+import { formatDate } from '../utils';
 import './Simulator.css';
 
 export default function Simulator({ products, onRefresh }) {
+  /* ── Transaction Form State ─────────────────────────── */
+  const [transactionType, setTransactionType] = useState('IN');
   const [selectedProduct, setSelectedProduct] = useState('');
   const [quantity, setQuantity] = useState('');
-  const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
 
-  const handleTransaction = async (type) => {
+  /* ── Transaction History State ──────────────────────── */
+  const [transactions, setTransactions] = useState([]);
+  const [txFilter, setTxFilter] = useState('');
+  const [txLoading, setTxLoading] = useState(false);
+
+  /* ── Load transactions ──────────────────────────────── */
+  const loadTransactions = useCallback(async () => {
+    setTxLoading(true);
+    try {
+      const data = await fetchTransactions(txFilter || undefined);
+      setTransactions(data);
+    } catch {
+      // Silently handle — table will show empty
+    } finally {
+      setTxLoading(false);
+    }
+  }, [txFilter]);
+
+  useEffect(() => {
+    loadTransactions();
+  }, [loadTransactions]);
+
+  /* ── Handle transaction submit ──────────────────────── */
+  const handleSubmit = async () => {
     const qty = parseInt(quantity, 10);
 
     if (!selectedProduct) {
       setResult({ type: 'error', error: 'Please select a product.' });
       return;
     }
-    if (type === 'adjustment') {
-      if (isNaN(qty) || qty === 0) {
-        setResult({ type: 'error', error: 'Adjustment quantity must be a non-zero number.' });
-        return;
-      }
-      if (!reason.trim()) {
-        setResult({ type: 'error', error: 'Adjustment requires a reason.' });
-        return;
-      }
-    } else {
-      if (isNaN(qty) || qty <= 0) {
-        setResult({ type: 'error', error: 'Quantity must be a positive number.' });
-        return;
-      }
+    if (isNaN(qty) || qty <= 0) {
+      setResult({ type: 'error', error: 'Quantity must be a positive number.' });
+      return;
     }
 
     setSubmitting(true);
@@ -39,23 +53,14 @@ export default function Simulator({ products, onRefresh }) {
 
     try {
       let res;
-      switch (type) {
-        case 'sale':
-          res = await postSale(selectedProduct, qty, reason);
-          break;
-        case 'consumption':
-          res = await postConsumption(selectedProduct, qty, reason);
-          break;
-        case 'receipt':
-          res = await postReceipt(selectedProduct, qty, reason);
-          break;
-        case 'adjustment':
-          res = await postAdjustment(selectedProduct, qty, reason);
-          break;
-        default:
-          return;
+      if (transactionType === 'IN') {
+        res = await postIncoming(selectedProduct, qty);
+      } else {
+        res = await postOutgoing(selectedProduct, qty);
       }
-      setResult({ type: 'success', data: res, txType: type });
+      setResult({ type: 'success', data: res, txType: transactionType });
+      setQuantity('');
+      await loadTransactions();
       if (onRefresh) await onRefresh();
     } catch (err) {
       setResult({ type: 'error', error: err.message });
@@ -64,7 +69,41 @@ export default function Simulator({ products, onRefresh }) {
     }
   };
 
+  /* ── Display helpers ────────────────────────────────── */
+  const displayType = (type) => {
+    if (type === 'IN') return 'Incoming';
+    if (type === 'OUT') return 'Outgoing';
+    return type.charAt(0) + type.slice(1).toLowerCase();
+  };
+
   const selectedProd = products?.find(p => p.product_id === selectedProduct);
+
+  /* ── CSV Export ──────────────────────────────────────── */
+  const handleExportCSV = () => {
+    const headers = ['Date', 'Product', 'Transaction Type', 'Quantity'];
+    const rows = transactions.map(tx => [
+      tx.created_at
+        ? new Date(tx.created_at).toLocaleDateString('en-IN', {
+            day: '2-digit', month: 'short', year: 'numeric',
+          })
+        : '',
+      tx.products?.product_name || '',
+      displayType(tx.transaction_type),
+      tx.quantity,
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="simulator-page">
@@ -73,14 +112,27 @@ export default function Simulator({ products, onRefresh }) {
         <div className="sim-card-header">
           <div className="sim-card-title">
             <Icon name="zap" size={18} color="var(--primary)" />
-            <span>Transaction Entry</span>
+            <span>Record Transaction</span>
           </div>
           <p className="sim-card-desc">
-            Simulate real inventory transactions. Select a product, enter a quantity, and perform a transaction to see live updates.
+            Record incoming or outgoing inventory transactions. Select a product, choose the transaction type, and enter the quantity.
           </p>
         </div>
 
         <div className="sim-form-grid">
+          <div className="sim-field">
+            <label htmlFor="sim-type">Transaction Type</label>
+            <select
+              id="sim-type"
+              value={transactionType}
+              onChange={(e) => setTransactionType(e.target.value)}
+              disabled={submitting}
+            >
+              <option value="IN">Incoming</option>
+              <option value="OUT">Outgoing</option>
+            </select>
+          </div>
+
           <div className="sim-field">
             <label htmlFor="sim-product">Product</label>
             <select
@@ -103,42 +155,23 @@ export default function Simulator({ products, onRefresh }) {
             <input
               id="sim-qty"
               type="number"
+              min="1"
               placeholder="Enter quantity"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               disabled={submitting}
             />
           </div>
-
-          <div className="sim-field">
-            <label htmlFor="sim-reason">Reason <span className="field-hint">(required for adjustment)</span></label>
-            <input
-              id="sim-reason"
-              type="text"
-              placeholder="Optional reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              disabled={submitting}
-            />
-          </div>
         </div>
 
         <div className="sim-actions">
-          <button className="sim-btn sim-btn-sale" onClick={() => handleTransaction('sale')} disabled={submitting}>
-            <Icon name="arrowDownRight" size={15} />
-            Sale
-          </button>
-          <button className="sim-btn sim-btn-consumption" onClick={() => handleTransaction('consumption')} disabled={submitting}>
-            <Icon name="arrowDownRight" size={15} />
-            Consumption
-          </button>
-          <button className="sim-btn sim-btn-receipt" onClick={() => handleTransaction('receipt')} disabled={submitting}>
-            <Icon name="arrowUpRight" size={15} />
-            Receipt
-          </button>
-          <button className="sim-btn sim-btn-adjustment" onClick={() => handleTransaction('adjustment')} disabled={submitting}>
-            <Icon name="refreshCw" size={15} />
-            Adjustment
+          <button
+            className="sim-btn sim-btn-record"
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
+            <Icon name="checkCircle" size={15} />
+            Record Transaction
           </button>
         </div>
 
@@ -165,7 +198,7 @@ export default function Simulator({ products, onRefresh }) {
             <>
               <div className="sim-result-header success">
                 <Icon name="checkCircle" size={18} />
-                <span>{result.txType?.toUpperCase()} — {selectedProd?.product_name || 'Product'}</span>
+                <span>{displayType(result.txType)} — {selectedProd?.product_name || 'Product'}</span>
               </div>
 
               {/* Stock Flow */}
@@ -240,6 +273,88 @@ export default function Simulator({ products, onRefresh }) {
           )}
         </div>
       )}
+
+      {/* Transaction History Card */}
+      <div className="sim-card">
+        <div className="sim-card-header">
+          <div className="sim-card-title">
+            <Icon name="clock" size={18} color="var(--primary)" />
+            <span>Transaction History</span>
+          </div>
+        </div>
+
+        <div className="sim-history-toolbar">
+          <div className="sim-filter-tabs">
+            <button
+              className={`sim-filter-tab ${txFilter === '' ? 'active' : ''}`}
+              onClick={() => setTxFilter('')}
+            >
+              All
+            </button>
+            <button
+              className={`sim-filter-tab ${txFilter === 'IN' ? 'active' : ''}`}
+              onClick={() => setTxFilter('IN')}
+            >
+              Incoming
+            </button>
+            <button
+              className={`sim-filter-tab ${txFilter === 'OUT' ? 'active' : ''}`}
+              onClick={() => setTxFilter('OUT')}
+            >
+              Outgoing
+            </button>
+          </div>
+          <button
+            className="sim-export-btn"
+            onClick={handleExportCSV}
+            disabled={transactions.length === 0}
+          >
+            <Icon name="download" size={14} />
+            Export CSV
+          </button>
+        </div>
+
+        <div className="sim-table-wrap">
+          {txLoading ? (
+            <div className="sim-loading" style={{ justifyContent: 'center', padding: '32px' }}>
+              <span className="sim-spinner" />
+              Loading transactions...
+            </div>
+          ) : transactions.length === 0 ? (
+            <div className="sim-empty">
+              <Icon name="inbox" size={32} color="var(--text-light)" />
+              <p>No transactions found.</p>
+            </div>
+          ) : (
+            <table className="sim-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Product</th>
+                  <th>Type</th>
+                  <th>Quantity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((tx) => (
+                  <tr key={tx.transaction_id}>
+                    <td>{formatDate(tx.created_at)}</td>
+                    <td className="sim-tx-product">{tx.products?.product_name || '—'}</td>
+                    <td>
+                      <span className={`sim-tx-type-badge ${tx.transaction_type === 'IN' ? 'sim-tx-in' : tx.transaction_type === 'OUT' ? 'sim-tx-out' : ''}`}>
+                        {displayType(tx.transaction_type)}
+                      </span>
+                    </td>
+                    <td className={`sim-tx-qty ${tx.quantity >= 0 ? 'positive' : 'negative'}`}>
+                      {tx.quantity >= 0 ? '+' : ''}{tx.quantity}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

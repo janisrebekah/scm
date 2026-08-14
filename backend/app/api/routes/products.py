@@ -46,7 +46,7 @@ def read_product(product_id: UUID):
 def add_product(product: ProductCreate):
 
     return create_product(
-        product.model_dump()
+        product.model_dump(mode='json')
     )
 
 
@@ -57,7 +57,8 @@ def edit_product(
 ):
 
     data = product.model_dump(
-        exclude_unset=True
+        exclude_unset=True,
+        mode='json'
     )
 
     if not data:

@@ -218,3 +218,69 @@ def record_adjustment(
         reason=reason,
         adjustment_reason=adjustment_reason,
     )
+
+
+def record_incoming(
+    product_id: UUID,
+    quantity: int,
+):
+    """
+    Records an incoming stock transaction.
+
+    Example:
+    Current stock = 20
+    Incoming = 50
+    New stock = 70
+    """
+
+    return _record_transaction(
+        product_id=product_id,
+        transaction_type="IN",
+        quantity=quantity,
+        reason="Incoming stock",
+    )
+
+
+def record_outgoing(
+    product_id: UUID,
+    quantity: int,
+):
+    """
+    Records an outgoing stock transaction.
+
+    _record_transaction expects a signed quantity where
+    new_stock = current_stock + quantity, so we negate here.
+
+    Example:
+    Current stock = 50
+    Outgoing = 20
+    New stock = 30
+    """
+
+    return _record_transaction(
+        product_id=product_id,
+        transaction_type="OUT",
+        quantity=-quantity,
+        reason="Outgoing stock",
+    )
+
+
+def get_transactions(transaction_type: str | None = None):
+    """
+    Fetches transaction history with product name join.
+    Optionally filters by transaction_type (e.g. 'IN', 'OUT').
+    """
+
+    query = (
+        supabase
+        .table("inventory_transactions")
+        .select("*, products(product_name)")
+        .order("created_at", desc=True)
+        .limit(100)
+    )
+
+    if transaction_type:
+        query = query.eq("transaction_type", transaction_type)
+
+    response = query.execute()
+    return response.data

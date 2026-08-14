@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, date
 
 
 class ProductBase(BaseModel):
@@ -11,6 +11,7 @@ class ProductBase(BaseModel):
     minimum_threshold: int = Field(default=10, ge=0)
     safety_stock: int = Field(default=5, ge=0)
     reorder_quantity: int = Field(default=50, gt=0)
+    expiry_date: date | None = None
 
 
 class ProductCreate(ProductBase):
@@ -24,6 +25,7 @@ class ProductUpdate(BaseModel):
     minimum_threshold: int | None = Field(default=None, ge=0)
     safety_stock: int | None = Field(default=None, ge=0)
     reorder_quantity: int | None = Field(default=None, gt=0)
+    expiry_date: date | None = None
 
 
 class ProductResponse(ProductBase):

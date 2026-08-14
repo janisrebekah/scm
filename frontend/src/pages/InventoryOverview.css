@@ -240,4 +240,226 @@
     margin-left: 0;
     text-align: center;
   }
+  .inv-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Expiry Badges ─────────────────────────────────────── */
+.inv-badge-expired {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+}
+
+.inv-badge-near-expiry {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border: 1px solid var(--warning-border);
+}
+
+.inv-badge-safe {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid var(--success-border);
+}
+
+.inv-expiry-date {
+  white-space: nowrap;
+  color: var(--text-muted) !important;
+}
+
+.inv-no-expiry {
+  color: var(--text-light);
+}
+
+/* ── Edit Button ───────────────────────────────────────── */
+.inv-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.inv-edit-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-bg);
+}
+
+/* ── Add Product Button ────────────────────────────────── */
+.inv-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  transition: opacity var(--transition), transform var(--transition-fast);
+  margin-left: auto;
+  box-shadow: var(--card-shadow);
+}
+
+.inv-add-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* ── Product Form Card ─────────────────────────────────── */
+.inv-form-card {
+  padding: 24px;
+  animation: inv-form-slide 0.25s ease-out;
+}
+
+@keyframes inv-form-slide {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.inv-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.inv-form-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.inv-form-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.inv-form-close:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.inv-form-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+.inv-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.inv-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.inv-form-field label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.inv-form-field input {
+  padding: 9px 12px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.inv-form-field input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-bg);
+}
+
+.inv-form-field input::placeholder {
+  color: var(--input-placeholder);
+}
+
+.inv-form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.inv-form-cancel {
+  padding: 9px 20px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.inv-form-cancel:hover {
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+
+.inv-form-submit {
+  padding: 9px 24px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--transition), transform var(--transition-fast);
+}
+
+.inv-form-submit:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.inv-form-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
