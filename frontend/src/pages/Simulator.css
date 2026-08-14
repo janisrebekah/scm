@@ -1,0 +1,300 @@
+/* ── Simulator Page ─────────────────────────────────────── */
+.simulator-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Card ───────────────────────────────────────────────── */
+.sim-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 24px;
+}
+
+.sim-card-header {
+  margin-bottom: 20px;
+}
+
+.sim-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.sim-card-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── Form ───────────────────────────────────────────────── */
+.sim-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.sim-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sim-field label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.field-hint {
+  font-weight: 400;
+  text-transform: none;
+  color: var(--text-muted);
+  letter-spacing: 0;
+}
+
+.sim-field select,
+.sim-field input {
+  padding: 10px 14px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.sim-field select:focus,
+.sim-field input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-bg);
+}
+
+.sim-field select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239ca3af' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+.sim-field select::placeholder,
+.sim-field input::placeholder {
+  color: var(--input-placeholder);
+}
+
+/* ── Actions ───────────────────────────────────────────── */
+.sim-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sim-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  transition: opacity var(--transition), transform var(--transition-fast);
+}
+
+.sim-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.sim-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sim-btn-sale { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.sim-btn-consumption { background: linear-gradient(135deg, #f97316, #ea580c); }
+.sim-btn-receipt { background: linear-gradient(135deg, #22c55e, #16a34a); }
+.sim-btn-adjustment { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+
+/* ── Loading ───────────────────────────────────────────── */
+.sim-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.sim-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--card-border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: sim-spin 0.7s linear infinite;
+}
+
+@keyframes sim-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Result Card ───────────────────────────────────────── */
+.sim-result-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: 24px;
+  animation: sim-fade-in 0.3s ease-out;
+}
+
+@keyframes sim-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.sim-result-card.success {
+  border-left: 3px solid var(--success);
+}
+
+.sim-result-card.error {
+  border-left: 3px solid var(--danger);
+}
+
+.sim-result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.sim-result-header.success { color: var(--success); }
+.sim-result-header.error { color: var(--danger); }
+
+.sim-result-error {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* ── Stock Flow ────────────────────────────────────────── */
+.sim-flow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.sim-flow-box {
+  text-align: center;
+  padding: 12px 20px;
+  background: var(--content-bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  min-width: 90px;
+}
+
+.sim-flow-box.highlight {
+  border-color: var(--primary);
+  background: var(--primary-bg);
+}
+
+.sim-flow-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.sim-flow-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+
+.sim-flow-value.positive { color: var(--success); }
+.sim-flow-value.negative { color: var(--danger); }
+
+.sim-flow-arrow {
+  color: var(--text-muted);
+}
+
+/* ── Events ────────────────────────────────────────────── */
+.sim-events {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sim-event-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--content-bg);
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+}
+
+.sim-event-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.alert-badge { background: var(--warning-bg); color: var(--warning); }
+.reorder-badge { background: var(--info-bg); color: var(--info); }
+.notif-badge { background: var(--success-bg); color: var(--success); }
+.notif-fail-badge { background: var(--danger-bg); color: var(--danger); }
+.neutral-badge { background: var(--success-bg); color: var(--success); }
+
+.sim-event-text {
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.sim-event-text strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .sim-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .sim-flow {
+    gap: 8px;
+  }
+  .sim-flow-box {
+    min-width: 70px;
+    padding: 10px 14px;
+  }
+}

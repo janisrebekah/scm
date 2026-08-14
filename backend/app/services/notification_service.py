@@ -2,17 +2,22 @@
 Notification Service
 
 Creates notification records when alerts are triggered.
-Sends notifications via the configured SMS provider.
+Sends low-stock notifications via email.
 Prevents duplicate notifications for the same active alert.
 """
-from uuid import UUID
+
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from app.database import supabase
-from app.services.sms_provider import send_sms
+from app.services.email_service import send_email
 
 
-# Default recipient for all notifications (configurable)
-DEFAULT_RECIPIENT = "+1234567890"
+# Default recipient is loaded from the environment when needed
+DEFAULT_RECIPIENT = None
 
 
 def _has_existing_notification(alert_id: str) -> bool:
@@ -41,6 +46,7 @@ def build_alert_message(
     """
     Build a human-readable notification message for an alert.
     """
+
     if alert_type == "OUT_OF_STOCK":
         msg = f"ALERT: {product_name} is OUT OF STOCK."
     else:
@@ -62,20 +68,12 @@ def send_alert_notification(
     recipient: str | None = None,
 ) -> dict | None:
     """
-    Create a notification record and send via SMS for a given alert.
+    Create a notification record and send an email for a given alert.
 
     Prevents duplicates: if a notification already exists for this alert_id,
     it will not send again.
-
-    Args:
-        alert: The alert record (must include alert_id, alert_type)
-        product: The product record (must include product_name, current_stock, minimum_threshold)
-        reorder_recommendation: Optional reorder recommendation record
-        recipient: Optional recipient override (defaults to DEFAULT_RECIPIENT)
-
-    Returns:
-        The notification record if created, None if duplicate or no alert.
     """
+
     if not alert:
         return None
 
@@ -85,11 +83,13 @@ def send_alert_notification(
     if _has_existing_notification(alert_id):
         return None
 
-    # Build the message
+    # Get recommended reorder quantity
     rec_qty = None
+
     if reorder_recommendation:
         rec_qty = reorder_recommendation.get("recommended_quantity")
 
+    # Build alert message
     message = build_alert_message(
         product_name=product["product_name"],
         alert_type=alert["alert_type"],
@@ -98,19 +98,29 @@ def send_alert_notification(
         recommended_quantity=rec_qty,
     )
 
-    target = recipient or DEFAULT_RECIPIENT
+    # Load supervisor email when the notification is triggered
+    target = recipient or os.getenv("SUPERVISOR_EMAIL")
 
-    # Send via SMS provider
-    sms_result = send_sms(recipient=target, message=message)
+    if not target:
+        raise ValueError(
+            "SUPERVISOR_EMAIL is not configured in the environment."
+        )
+
+    # Send email
+    email_result = send_email(
+        recipient=target,
+        subject=f"Smart Restock Alert - {product['product_name']}",
+        message=message,
+    )
 
     # Create notification record in Supabase
     notification_data = {
         "alert_id": alert_id,
         "recipient": target,
-        "channel": "SMS",
+        "channel": "EMAIL",
         "message": message,
-        "status": sms_result["status"],
-        "sent_at": sms_result["sent_at"],
+        "status": email_result["status"],
+        "sent_at": email_result["sent_at"],
     }
 
     response = (
@@ -125,6 +135,7 @@ def send_alert_notification(
 
 def get_all_notifications():
     """Fetch all notifications, newest first."""
+
     response = (
         supabase
         .table("notifications")
@@ -138,6 +149,7 @@ def get_all_notifications():
 
 def get_notifications_for_alert(alert_id: str):
     """Fetch notifications for a specific alert."""
+
     response = (
         supabase
         .table("notifications")

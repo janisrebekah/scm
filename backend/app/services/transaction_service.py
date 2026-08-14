@@ -26,6 +26,7 @@ def _record_transaction(
     transaction_type: str,
     quantity: int,
     reason: str | None = None,
+    adjustment_reason: str | None = None,
 ):
     # 1. Get the product
     product = _get_product(product_id)
@@ -71,15 +72,19 @@ def _record_transaction(
         )
 
     # 6. Record inventory transaction
+    insert_data = {
+        "product_id": str(product_id),
+        "transaction_type": transaction_type,
+        "quantity": quantity,
+        "reason": reason,
+    }
+    if adjustment_reason:
+        insert_data["adjustment_reason"] = adjustment_reason
+
     transaction_response = (
         supabase
         .table("inventory_transactions")
-        .insert({
-            "product_id": str(product_id),
-            "transaction_type": transaction_type,
-            "quantity": quantity,
-            "reason": reason,
-        })
+        .insert(insert_data)
         .execute()
     )
 
@@ -190,6 +195,7 @@ def record_adjustment(
     product_id: UUID,
     quantity: int,
     reason: str,
+    adjustment_reason: str = "OTHER",
 ):
     """
     Records a manual stock adjustment.
@@ -197,9 +203,12 @@ def record_adjustment(
     Positive quantity = stock increase
     Negative quantity = stock decrease
 
+    adjustment_reason must be one of:
+    DAMAGED, EXPIRED, LOST, STOCK_CORRECTION, OTHER
+
     Example:
-    +5 = found stock
-    -5 = damaged stock
+    +5 = found stock (STOCK_CORRECTION)
+    -5 = damaged stock (DAMAGED)
     """
 
     return _record_transaction(
@@ -207,4 +216,5 @@ def record_adjustment(
         transaction_type="ADJUSTMENT",
         quantity=quantity,
         reason=reason,
+        adjustment_reason=adjustment_reason,
     )

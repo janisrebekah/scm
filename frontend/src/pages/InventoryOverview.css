@@ -1,0 +1,243 @@
+/* ── Inventory Overview Page ────────────────────────────── */
+.inventory-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Stats Bar ─────────────────────────────────────────── */
+.inv-stats-bar {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.inv-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--card-shadow);
+}
+
+.inv-stat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+.inv-stat-dot.healthy { background: var(--success); }
+.inv-stat-dot.low-stock { background: var(--warning); }
+.inv-stat-dot.out-of-stock { background: var(--danger); }
+
+.inv-stat-label {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.inv-stat-count {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+/* ── Card ───────────────────────────────────────────────── */
+.inv-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+/* ── Filters ───────────────────────────────────────────── */
+.inv-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--card-border);
+  flex-wrap: wrap;
+}
+
+.inv-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.inv-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.inv-search {
+  width: 100%;
+  padding: 9px 12px 9px 38px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.inv-search:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-bg);
+}
+
+.inv-search::placeholder {
+  color: var(--input-placeholder);
+}
+
+.inv-filter-select {
+  padding: 9px 32px 9px 12px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239ca3af' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.inv-filter-select:focus {
+  border-color: var(--primary);
+}
+
+.inv-result-count {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+/* ── Table ──────────────────────────────────────────────── */
+.inv-table-wrap {
+  overflow-x: auto;
+}
+
+.inv-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.inv-table thead {
+  background: var(--table-header-bg);
+}
+
+.inv-table th {
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--table-border);
+  white-space: nowrap;
+}
+
+.inv-table td {
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--table-border);
+}
+
+.inv-table tbody tr:hover {
+  background: var(--table-row-hover);
+}
+
+.inv-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.inv-product-name {
+  font-weight: 600;
+  color: var(--text-primary) !important;
+}
+
+.inv-category {
+  color: var(--text-muted) !important;
+}
+
+.inv-stock {
+  font-weight: 700 !important;
+}
+
+.inv-stock-healthy { color: var(--success) !important; }
+.inv-stock-low-stock { color: var(--warning) !important; }
+.inv-stock-out-of-stock { color: var(--danger) !important; }
+
+/* ── Status Badge ──────────────────────────────────────── */
+.inv-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.inv-badge-healthy {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid var(--success-border);
+}
+
+.inv-badge-low-stock {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border: 1px solid var(--warning-border);
+}
+
+.inv-badge-out-of-stock {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+}
+
+/* ── Empty State ───────────────────────────────────────── */
+.inv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 48px 24px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .inv-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .inv-search-wrap {
+    min-width: auto;
+  }
+  .inv-result-count {
+    margin-left: 0;
+    text-align: center;
+  }
+}

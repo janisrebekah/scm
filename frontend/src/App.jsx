@@ -1,122 +1,206 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useEffect, useCallback } from 'react';
+import { fetchDashboardSummary } from './api';
+import './App.css';
 
+/* Components */
+import Sidebar from './components/Sidebar';
+import PageHeader from './components/PageHeader';
+
+/* Pages */
+import LoginPage from './pages/LoginPage';
+import Dashboard from './pages/Dashboard';
+import Simulator from './pages/Simulator';
+import InventoryOverview from './pages/InventoryOverview';
+import ActiveAlerts from './pages/ActiveAlerts';
+import ReorderManagement from './pages/ReorderManagement';
+import AlertsHistory from './pages/AlertsHistory';
+
+/* ── Page metadata ─────────────────────────────────────── */
+const PAGE_META = {
+  dashboard:  { title: 'Dashboard',            subtitle: 'Real-time inventory command center' },
+  simulator:  { title: 'Inventory Simulator',   subtitle: 'Simulate transactions and observe live effects' },
+  inventory:  { title: 'Inventory Overview',     subtitle: 'Browse and filter all products' },
+  alerts:     { title: 'Active Alerts',          subtitle: 'Currently active stock alerts' },
+  reorder:    { title: 'Reorder Management',     subtitle: 'Manage reorder recommendations' },
+  history:    { title: 'Alerts History',         subtitle: 'Historical alert records' },
+};
+
+/* ── App Shell ─────────────────────────────────────────── */
 function App() {
-  const [count, setCount] = useState(0)
+  /* Auth state */
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  /* Data state */
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  /* Navigation state */
+  const [activePage, setActivePage] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  /* ── Load dashboard data ─────────────────────────────── */
+  const loadDashboard = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await fetchDashboardSummary();
+      setData(result);
+    } catch (err) {
+      setError(err.message || 'Failed to load dashboard');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /* ── Check existing JWT session on mount ─────────────── */
+  useEffect(() => {
+    async function checkAuth() {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        setAuthLoading(false);
+        return;
+      }
+      try {
+        const response = await fetch('/api/auth/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('user');
+          setUser(null);
+          return;
+        }
+        const currentUser = await response.json();
+        setUser(currentUser);
+        localStorage.setItem('user', JSON.stringify(currentUser));
+      } catch {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user');
+        setUser(null);
+      } finally {
+        setAuthLoading(false);
+      }
+    }
+    checkAuth();
+  }, []);
+
+  /* ── Fetch data once authenticated ───────────────────── */
+  useEffect(() => {
+    if (user) loadDashboard();
+  }, [user, loadDashboard]);
+
+  /* ── Handlers ────────────────────────────────────────── */
+  const handleLogin = (currentUser) => setUser(currentUser);
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user');
+    setUser(null);
+    setData(null);
+    setError(null);
+    setActivePage('dashboard');
+  };
+
+  const handleNavigate = (page) => setActivePage(page);
+  const toggleSidebar = () => setSidebarOpen(prev => !prev);
+
+  /* ── Auth loading ────────────────────────────────────── */
+  if (authLoading) {
+    return (
+      <div className="app-loading-screen">
+        <div className="app-spinner" />
+        <p>Checking authentication...</p>
+      </div>
+    );
+  }
+
+  /* ── Login screen ────────────────────────────────────── */
+  if (!user) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
+  /* ── Data loading ────────────────────────────────────── */
+  if (loading && !data) {
+    return (
+      <div className="app-loading-screen">
+        <div className="app-spinner" />
+        <p>Loading dashboard data...</p>
+      </div>
+    );
+  }
+
+  /* ── Error state ─────────────────────────────────────── */
+  if (error && !data) {
+    return (
+      <div className="app-loading-screen">
+        <p className="app-error-msg">{error}</p>
+        <button className="app-retry-btn" onClick={loadDashboard}>Retry</button>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  /* ── Derived counts for sidebar badges ───────────────── */
+  const alertCount = data.active_alerts?.length || 0;
+  const reorderCount = data.reorder_summary?.pending_reorders || 0;
+
+  const pageMeta = PAGE_META[activePage] || PAGE_META.dashboard;
+
+  /* ── Render page content ─────────────────────────────── */
+  const renderPage = () => {
+    switch (activePage) {
+      case 'dashboard':
+        return <Dashboard data={data} />;
+      case 'simulator':
+        return <Simulator products={data.products} onRefresh={loadDashboard} />;
+      case 'inventory':
+        return <InventoryOverview products={data.products} />;
+      case 'alerts':
+        return <ActiveAlerts alerts={data.active_alerts} />;
+      case 'reorder':
+        return (
+          <ReorderManagement
+            reorders={data.reorder_recommendations}
+            reorderSummary={data.reorder_summary}
+            onRefresh={loadDashboard}
+          />
+        );
+      case 'history':
+        return <AlertsHistory history={data.alert_history} />;
+      default:
+        return <Dashboard data={data} />;
+    }
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="app-shell">
+      <Sidebar
+        activePage={activePage}
+        onNavigate={handleNavigate}
+        alertCount={alertCount}
+        reorderCount={reorderCount}
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={toggleSidebar}
+      />
 
-      <div className="ticks"></div>
+      <div className="app-main">
+        <PageHeader
+          title={pageMeta.title}
+          subtitle={pageMeta.subtitle}
+          user={user}
+          onLogout={handleLogout}
+          onMenuToggle={toggleSidebar}
+        />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        <main className="app-content">
+          {renderPage()}
+        </main>
+      </div>
+    </div>
+  );
 }
 
-export default App
+export default App;

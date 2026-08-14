@@ -56,5 +56,6 @@ def adjustment(transaction: AdjustmentCreate):
     return record_adjustment(
         product_id=transaction.product_id,
         quantity=transaction.quantity,
-        reason=transaction.reason
+        reason=transaction.reason,
+        adjustment_reason=transaction.adjustment_reason.value,
     )
