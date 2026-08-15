@@ -361,6 +361,44 @@
 .sim-log-qty.neg { color: #AC445A; }
 .sim-log-balance { color: #6b7280; }
 
+.sim-log-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--card-border);
+  background: #faf9fc;
+}
+
+.sim-page-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: #451952;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
+}
+
+.sim-page-btn:hover:not(:disabled) {
+  background: #f5f3f8;
+}
+
+.sim-page-btn:disabled {
+  color: #9ca3af;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sim-page-indicator {
+  color: #6b7280;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
 .sim-loading {
   display: flex;
   align-items: center;

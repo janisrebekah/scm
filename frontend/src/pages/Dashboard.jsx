@@ -344,15 +344,7 @@ export default function Dashboard({ data }) {
         </div>
       </section>
 
-      {/* ════ QUICK ACTIONS ════ */}
-      <section className="d-card d-quick">
-        <div className="d-quick-row">
-          <button onClick={() => navigateTo('Inventory Overview')}><div className="d-q-ic d-ic-purple"><Icon name="plus" size={16} /></div><strong>Add Product</strong></button>
-          <button onClick={() => navigateTo('Inventory Simulator')}><div className="d-q-ic d-ic-amber"><Icon name="activity" size={16} /></div><strong>Record Transaction</strong></button>
-          <button onClick={() => navigateTo('Reorder Management')}><div className="d-q-ic d-ic-rose"><Icon name="refreshCw" size={16} /></div><strong>Review Reorders</strong></button>
-          <button onClick={() => navigateTo('Alerts')}><div className="d-q-ic d-ic-green"><Icon name="bell" size={16} /></div><strong>View Alerts</strong></button>
-        </div>
-      </section>
+      
     </div>
   );
 }

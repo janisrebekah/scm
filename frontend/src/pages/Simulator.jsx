@@ -17,6 +17,8 @@ export default function Simulator({ products, onRefresh }) {
   const [transactions, setTransactions] = useState([]);
   const [txFilter, setTxFilter] = useState('');
   const [txLoading, setTxLoading] = useState(false);
+  const [txPage, setTxPage] = useState(1);
+  const txPerPage = 10;
 
   /* ── Load transactions ──────────────────────────────── */
   const loadTransactions = useCallback(async () => {
@@ -34,6 +36,18 @@ export default function Simulator({ products, onRefresh }) {
   useEffect(() => {
     loadTransactions();
   }, [loadTransactions]);
+
+  const totalTxPages = Math.max(1, Math.ceil(transactions.length / txPerPage));
+  const paginatedTransactions = transactions.slice((txPage - 1) * txPerPage, txPage * txPerPage);
+
+  useEffect(() => {
+    setTxPage((page) => Math.min(page, totalTxPages));
+  }, [totalTxPages]);
+
+  const handleTxFilterChange = (filter) => {
+    setTxFilter(filter);
+    setTxPage(1);
+  };
 
   /* ── Handle transaction submit ──────────────────────── */
   const handleSubmit = async () => {
@@ -61,6 +75,7 @@ export default function Simulator({ products, onRefresh }) {
       setResult({ type: 'success', data: res, txType: transactionType });
       setQuantity('');
       await loadTransactions();
+      setTxPage(1);
       if (onRefresh) await onRefresh();
     } catch (err) {
       setResult({ type: 'error', error: err.message });
@@ -258,9 +273,9 @@ export default function Simulator({ products, onRefresh }) {
 
             <div className="sim-log-toolbar">
               <div className="sim-filter-tabs">
-                <button className={`sim-tab ${txFilter === '' ? 'active' : ''}`} onClick={() => setTxFilter('')}>All Types</button>
-                <button className={`sim-tab ${txFilter === 'IN' ? 'active' : ''}`} onClick={() => setTxFilter('IN')}>Incoming</button>
-                <button className={`sim-tab ${txFilter === 'OUT' ? 'active' : ''}`} onClick={() => setTxFilter('OUT')}>Outgoing</button>
+                <button className={`sim-tab ${txFilter === '' ? 'active' : ''}`} onClick={() => handleTxFilterChange('')}>All Types</button>
+                <button className={`sim-tab ${txFilter === 'IN' ? 'active' : ''}`} onClick={() => handleTxFilterChange('IN')}>Incoming</button>
+                <button className={`sim-tab ${txFilter === 'OUT' ? 'active' : ''}`} onClick={() => handleTxFilterChange('OUT')}>Outgoing</button>
               </div>
               <button className="sim-export-btn" onClick={handleExportCSV} disabled={transactions.length === 0}>
                 <Icon name="download" size={13} /> Export
@@ -284,7 +299,7 @@ export default function Simulator({ products, onRefresh }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {transactions.map((tx) => (
+                    {paginatedTransactions.map((tx) => (
                       <tr key={tx.transaction_id}>
                         <td className="sim-log-date">{formatDate(tx.created_at)}</td>
                         <td className="sim-log-product">{tx.products?.product_name || '—'}</td>
@@ -303,6 +318,28 @@ export default function Simulator({ products, onRefresh }) {
                 </table>
               )}
             </div>
+
+            {!txLoading && transactions.length > 0 && (
+              <div className="sim-log-pagination">
+                <button
+                  className="sim-page-btn"
+                  onClick={() => setTxPage((page) => Math.max(1, page - 1))}
+                  disabled={txPage === 1}
+                >
+                  Previous
+                </button>
+                <span className="sim-page-indicator">
+                  Page {txPage} / {totalTxPages}
+                </span>
+                <button
+                  className="sim-page-btn"
+                  onClick={() => setTxPage((page) => Math.min(totalTxPages, page + 1))}
+                  disabled={txPage === totalTxPages}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
