@@ -120,12 +120,12 @@ def generate_reorder_recommendation(product_id: UUID):
     This is the main entry point called after stock evaluation
     determines that a product is LOW_STOCK or OUT_OF_STOCK.
 
-    Steps:
-    1. Fetch product data
-    2. Calculate average daily demand from SALE/CONSUMPTION history
-    3. Calculate reorder point
-    4. Calculate recommended quantity
-    5. Upsert into reorder_recommendations table
+    Smart recommendation logic:
+    - Target Stock = Minimum Threshold + Safety Stock
+    - Recommended Reorder = Target Stock - Current Stock
+    - If the product has a standard reorder_quantity (supplier order size),
+      ensure the recommendation is at least that amount so the reorder
+      always restores stock to a healthy level.
 
     Returns the recommendation record, or None if no reorder is needed.
     """
@@ -137,24 +137,27 @@ def generate_reorder_recommendation(product_id: UUID):
     current_stock = product["current_stock"]
     safety_stock = product["safety_stock"]
     minimum_threshold = product["minimum_threshold"]
+    reorder_quantity = product["reorder_quantity"]
     lead_time_days = DEFAULT_LEAD_TIME_DAYS
 
-    # Step 1: Calculate average daily demand
+    # Step 1: Calculate average daily demand (kept for the recommendation record)
     avg_demand = calculate_average_daily_demand(product_id)
 
-    # Step 2: Calculate reorder point
+    # Step 2: Calculate reorder point (kept for the recommendation record)
     reorder_point = calculate_reorder_point(avg_demand, lead_time_days, safety_stock)
 
-    # Step 3: Calculate recommended quantity
-    recommended_qty = calculate_recommended_quantity(reorder_point, current_stock)
+    # Step 3: Smart recommended quantity
+    # Target stock = minimum threshold + safety stock
+    target_stock = minimum_threshold + safety_stock
+    recommended_qty = max(target_stock - current_stock, 0)
 
-    # Step 4: When stock is at or below threshold but formula yields 0,
-    # use the product's configured reorder_quantity as a sensible floor
-    if current_stock <= minimum_threshold and recommended_qty == 0:
-        recommended_qty = product["reorder_quantity"]
+    # Step 4: If a reorder is needed, ensure it is at least the product's
+    # standard reorder_quantity (supplier order size)
+    if recommended_qty > 0:
+        recommended_qty = max(recommended_qty, reorder_quantity)
 
-    # Only skip if stock is healthy (above threshold) and formula says no reorder
-    if recommended_qty == 0 and current_stock > minimum_threshold:
+    # Only skip if stock is already at or above target
+    if recommended_qty == 0:
         return None
 
     # Step 4: Check for existing PENDING recommendation

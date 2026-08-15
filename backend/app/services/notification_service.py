@@ -41,6 +41,7 @@ def build_alert_message(
     alert_type: str,
     current_stock: int,
     minimum_threshold: int,
+    safety_stock: int = 0,
     recommended_quantity: int | None = None,
 ) -> str:
     """
@@ -52,11 +53,16 @@ def build_alert_message(
     else:
         msg = f"ALERT: {product_name} stock is low."
 
-    msg += f"\nCurrent stock: {current_stock}."
-    msg += f"\nMinimum threshold: {minimum_threshold}."
+    msg += f"\nCurrent stock: {current_stock} units"
+    msg += f"\nMinimum threshold: {minimum_threshold} units"
+    msg += f"\nSafety stock: {safety_stock} units"
 
     if recommended_quantity and recommended_quantity > 0:
-        msg += f"\nRecommended reorder: {recommended_quantity} units."
+        msg += f"\nRecommended reorder: {recommended_quantity} units"
+        msg += (
+            "\n\nRecommended reorder quantity is calculated to restore stock to the"
+            "\nminimum threshold plus the required safety stock."
+        )
 
     return msg
 
@@ -95,6 +101,7 @@ def send_alert_notification(
         alert_type=alert["alert_type"],
         current_stock=product["current_stock"],
         minimum_threshold=product["minimum_threshold"],
+        safety_stock=product.get("safety_stock", 0),
         recommended_quantity=rec_qty,
     )
 
