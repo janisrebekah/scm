@@ -280,7 +280,7 @@ export default function Simulator({ products, onRefresh }) {
                       <th>Product</th>
                       <th>Type</th>
                       <th>Qty</th>
-                      <th>Balance</th>
+                      
                     </tr>
                   </thead>
                   <tbody>
@@ -296,7 +296,7 @@ export default function Simulator({ products, onRefresh }) {
                         <td className={`sim-log-qty ${tx.quantity >= 0 ? 'pos' : 'neg'}`}>
                           {tx.quantity >= 0 ? '+' : ''}{tx.quantity}
                         </td>
-                        <td className="sim-log-balance">{tx.products?.current_stock ?? '—'}</td>
+                        
                       </tr>
                     ))}
                   </tbody>
