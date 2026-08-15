@@ -228,12 +228,12 @@ export default function AlertsHistory({ history }) {
                 <tr>
                   <th>Product</th>
                   <th>Alert Type</th>
-                  
+                  <th>Severity</th>
                   <th>Status</th>
                   <th>Current Stock</th>
                   <th>Threshold</th>
                   <th>Created At</th>
-                  <th>Resolved At</th>
+                  <th>Resolution Time</th>
                 </tr>
               </thead>
               <tbody>

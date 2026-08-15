@@ -13,6 +13,7 @@ import Simulator from './pages/Simulator';
 import InventoryOverview from './pages/InventoryOverview';
 import ReorderManagement from './pages/ReorderManagement';
 import AlertsHistory from './pages/AlertsHistory';
+import Suppliers from './pages/Suppliers';
 
 /* ── Page metadata ─────────────────────────────────────── */
 const PAGE_META = {
@@ -21,6 +22,7 @@ const PAGE_META = {
   inventory:  { title: 'Inventory Overview',     subtitle: 'Browse and filter all products' },
   alerts:     { title: 'Alerts',                 subtitle: 'Complete alert history and resolution status' },
   reorder:    { title: 'Reorder Management',     subtitle: 'Manage reorder recommendations' },
+  suppliers:  { title: 'Suppliers',              subtitle: 'Manage supplier information and supplied products' },
 };
 
 /* ── App Shell ─────────────────────────────────────────── */
@@ -168,6 +170,8 @@ function App() {
             onRefresh={loadDashboard}
           />
         );
+      case 'suppliers':
+        return <Suppliers />;
       default:
         return <Dashboard data={data} />;
     }

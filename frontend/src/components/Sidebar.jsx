@@ -8,6 +8,7 @@ const navItems = [
   { id: 'inventory', label: 'Inventory Overview', icon: 'package' },
   { id: 'alerts', label: 'Alerts', icon: 'bell' },
   { id: 'reorder', label: 'Reorder Management', icon: 'refreshCw' },
+  { id: 'suppliers', label: 'Suppliers', icon: 'truck' },
 ];
 
 export default function Sidebar({
