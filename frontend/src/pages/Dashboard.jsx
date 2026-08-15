@@ -123,17 +123,6 @@ export default function Dashboard({ data }) {
 
   const pending = reorders.filter((r) => r.status === 'PENDING').sort((a, b) => (a.current_stock ?? 0) - (b.current_stock ?? 0));
 
-  /* ─── smart insight ─── */
-  const insight = (() => {
-    const o = products.find((p) => p.current_stock === 0);
-    if (o) return { tone: 'danger', icon: 'xCircle', title: `${o.product_name} is out of stock`, desc: `0 units vs minimum ${formatNumber(o.minimum_threshold)}`, target: 'Reorder Management', cta: 'Review Reorder' };
-    const e = expiryProducts[0];
-    if (e) return { tone: e.expiryStatus === 'expired' ? 'danger' : 'warning', icon: 'clock', title: e.expiryStatus === 'expired' ? `${e.product_name} expired` : `${e.product_name} expires in ${e.daysLeft}d`, desc: `Expiry: ${formatDateOnly(e.expiry_date)}`, target: 'Inventory Overview', cta: 'Review Inventory' };
-    const l = lowStockList[0];
-    if (l) return { tone: 'warning', icon: 'target', title: `${l.product_name} is running low`, desc: `${formatNumber(l.current_stock)} / ${formatNumber(l.minimum_threshold)} units`, target: 'Reorder Management', cta: 'Review Reorder' };
-    return { tone: 'success', icon: 'checkCircle', title: 'Inventory is healthy', desc: `${formatNumber(healthy)} of ${formatNumber(total)} products in good standing.`, target: 'Inventory Overview', cta: 'View Inventory' };
-  })();
-
   /* ─── health donut data ─── */
   const donutData = [{ value: healthPct }, { value: 100 - healthPct }];
 
@@ -254,18 +243,6 @@ export default function Dashboard({ data }) {
 
         {/* ──── RIGHT: SECONDARY SIDEBAR ──── */}
         <div className="d-secondary">
-
-          {/* SMART INSIGHT */}
-          <div className={`d-card d-insight d-insight-${insight.tone}`}>
-            <div className="d-insight-inner">
-              <div className="d-insight-ic"><Icon name={insight.icon} size={22} /></div>
-              <div className="d-insight-text">
-                <h4>{insight.title}</h4>
-                <p>{insight.desc}</p>
-              </div>
-              <button className="d-insight-btn" onClick={() => navigateTo(insight.target)}>{insight.cta} <Icon name="arrowUpRight" size={11} /></button>
-            </div>
-          </div>
 
           {/* EXPIRY RISK */}
           <div className="d-card d-expiry">
