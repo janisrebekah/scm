@@ -142,7 +142,8 @@ function App() {
   if (!data) return null;
 
   /* ── Derived counts for sidebar badges ───────────────── */
-  const alertCount = (data.alert_history || data.active_alerts || [])
+  const alertBadgeSource = data.alert_history?.length ? data.alert_history : (data.active_alerts || []);
+  const alertCount = alertBadgeSource
     .filter(alert => alert.status === 'ACTIVE').length;
   const reorderCount = data.reorder_summary?.pending_reorders || 0;
 
