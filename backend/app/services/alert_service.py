@@ -72,6 +72,41 @@ def resolve_active_alert(product_id: UUID):
     )
 
 
+def resolve_stale_active_alerts(products: list[dict]):
+    product_by_id = {
+        str(product["product_id"]): product
+        for product in products
+    }
+
+    active_alerts_response = (
+        supabase
+        .table("alerts")
+        .select("*")
+        .eq("status", "ACTIVE")
+        .execute()
+    )
+
+    for alert in active_alerts_response.data or []:
+        product = product_by_id.get(str(alert["product_id"]))
+        if not product:
+            continue
+
+        current_stock = product["current_stock"]
+        threshold = product["minimum_threshold"]
+
+        if current_stock >= threshold:
+            (
+                supabase
+                .table("alerts")
+                .update({
+                    "status": "RESOLVED",
+                    "resolved_at": "now()"
+                })
+                .eq("alert_id", alert["alert_id"])
+                .execute()
+            )
+
+
 def evaluate_stock(product_id: UUID):
     product = get_product(product_id)
 
@@ -99,7 +134,7 @@ def evaluate_stock(product_id: UUID):
         )
 
     # LOW STOCK
-    if current_stock <= threshold:
+    if current_stock < threshold:
 
         existing_alert = get_active_alert(product_id)
 

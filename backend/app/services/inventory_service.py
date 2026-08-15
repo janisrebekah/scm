@@ -1,4 +1,5 @@
 from app.database import supabase
+from app.services.alert_service import resolve_stale_active_alerts
 
 
 def get_inventory_summary():
@@ -19,6 +20,8 @@ def get_inventory_summary():
     )
     products = products_response.data
 
+    resolve_stale_active_alerts(products)
+
     # 2. Classify products by stock status
     healthy = []
     low_stock = []
@@ -33,7 +36,7 @@ def get_inventory_summary():
         if current == 0:
             p["status"] = "OUT_OF_STOCK"
             out_of_stock.append(p)
-        elif current <= threshold:
+        elif current < threshold:
             p["status"] = "LOW_STOCK"
             low_stock.append(p)
         else:

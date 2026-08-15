@@ -26,13 +26,13 @@ export function formatCurrency(num) {
 
 export function getStockStatus(currentStock, threshold) {
   if (currentStock === 0) return 'out-of-stock';
-  if (currentStock <= threshold) return 'low-stock';
+  if (currentStock < threshold) return 'low-stock';
   return 'healthy';
 }
 
 export function getStockStatusLabel(currentStock, threshold) {
   if (currentStock === 0) return 'Out of Stock';
-  if (currentStock <= threshold) return 'Low Stock';
+  if (currentStock < threshold) return 'Low Stock';
   return 'Healthy';
 }
 

@@ -1,5 +1,6 @@
 from uuid import UUID
 from app.database import supabase
+from app.services.alert_service import evaluate_stock
 
 
 def get_all_products():
@@ -47,7 +48,12 @@ def update_product(product_id: UUID, product_data: dict):
         .execute()
     )
 
-    return response.data[0]
+    updated_product = response.data[0]
+
+    if "current_stock" in product_data or "minimum_threshold" in product_data:
+        evaluate_stock(product_id)
+
+    return updated_product
 
 
 def delete_product(product_id: UUID):

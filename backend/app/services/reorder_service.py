@@ -332,7 +332,7 @@ def complete_reorder(recommendation_id: UUID):
         .execute()
     )
 
-    if new_stock > minimum_threshold:
+    if new_stock >= minimum_threshold:
         resolve_active_alert(product_id)
 
     return update_response.data[0] if update_response.data else None
