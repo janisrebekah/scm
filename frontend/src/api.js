@@ -24,6 +24,30 @@ export async function updateReorderStatus(recommendationId, status) {
   return response.json();
 }
 
+export async function completeReorder(recommendationId) {
+  const response = await fetch(`${API_BASE}/api/reorder/${recommendationId}/complete`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to complete reorder: ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function updateReorderQuantity(recommendationId, quantity) {
+  const response = await fetch(`${API_BASE}/api/reorder/${recommendationId}/quantity`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recommended_quantity: quantity }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to update quantity: ${response.status}`);
+  }
+  return response.json();
+}
+
 /* ── Transaction APIs ──────────────────────────────────── */
 
 async function postTransaction(endpoint, body) {

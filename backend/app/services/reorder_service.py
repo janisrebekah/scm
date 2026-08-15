@@ -232,8 +232,11 @@ def get_pending_recommendations():
 def update_recommendation_status(recommendation_id: UUID, new_status: str):
     """
     Update the status of a reorder recommendation.
-    Valid transitions: PENDING → ORDERED → COMPLETED
-                       PENDING → CANCELLED
+    Valid transitions: PENDING -> ORDERED -> COMPLETED
+                       PENDING -> CANCELLED
+
+    Note: For COMPLETED status, use complete_reorder() instead,
+    which also updates inventory and creates an IN transaction.
     """
     valid_statuses = {"PENDING", "ORDERED", "COMPLETED", "CANCELLED"}
 
@@ -251,3 +254,112 @@ def update_recommendation_status(recommendation_id: UUID, new_status: str):
     )
 
     return response.data[0] if response.data else None
+
+
+def complete_reorder(recommendation_id: UUID):
+    """
+    Complete a reorder: increase product stock, create an IN transaction,
+    and mark the recommendation as COMPLETED.
+
+    Only processes recommendations with status ORDERED (prevents double completion).
+    Returns the updated recommendation, or None if not eligible.
+    """
+
+    # 1. Fetch the recommendation and verify it is ORDERED
+    rec_response = (
+        supabase
+        .table("reorder_recommendations")
+        .select("*")
+        .eq("recommendation_id", str(recommendation_id))
+        .single()
+        .execute()
+    )
+
+    rec = rec_response.data
+    if not rec or rec["status"] != "ORDERED":
+        return None
+
+    product_id = rec["product_id"]
+    reorder_qty = rec["recommended_quantity"]
+
+    # 2. Fetch current product stock
+    product_response = (
+        supabase
+        .table("products")
+        .select("current_stock")
+        .eq("product_id", str(product_id))
+        .single()
+        .execute()
+    )
+
+    product = product_response.data
+    if not product:
+        return None
+
+    current_stock = product["current_stock"]
+    new_stock = current_stock + reorder_qty
+
+    # 3. Update product stock
+    (
+        supabase
+        .table("products")
+        .update({"current_stock": new_stock})
+        .eq("product_id", str(product_id))
+        .execute()
+    )
+
+    # 4. Create IN transaction record
+    (
+        supabase
+        .table("inventory_transactions")
+        .insert({
+            "product_id": str(product_id),
+            "transaction_type": "IN",
+            "quantity": reorder_qty,
+            "reason": "Reorder completed",
+        })
+        .execute()
+    )
+
+    # 5. Mark recommendation as COMPLETED
+    update_response = (
+        supabase
+        .table("reorder_recommendations")
+        .update({"status": "COMPLETED"})
+        .eq("recommendation_id", str(recommendation_id))
+        .execute()
+    )
+
+    return update_response.data[0] if update_response.data else None
+
+
+def update_recommended_quantity(recommendation_id: UUID, new_quantity: int):
+    """
+    Update the recommended_quantity on a PENDING or ORDERED recommendation.
+    Allows the supervisor to override the system's recommendation.
+    """
+
+    # Verify the recommendation exists and is editable
+    rec_response = (
+        supabase
+        .table("reorder_recommendations")
+        .select("status")
+        .eq("recommendation_id", str(recommendation_id))
+        .single()
+        .execute()
+    )
+
+    rec = rec_response.data
+    if not rec or rec["status"] not in ("PENDING", "ORDERED"):
+        return None
+
+    response = (
+        supabase
+        .table("reorder_recommendations")
+        .update({"recommended_quantity": new_quantity})
+        .eq("recommendation_id", str(recommendation_id))
+        .execute()
+    )
+
+    return response.data[0] if response.data else None
+

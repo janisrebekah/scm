@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from app.schemas.reorder import (
     ReorderRecommendationResponse,
     ReorderStatusUpdate,
+    ReorderQuantityUpdate,
 )
 
 from app.services.reorder_service import (
@@ -12,6 +13,8 @@ from app.services.reorder_service import (
     get_pending_recommendations,
     generate_reorder_recommendation,
     update_recommendation_status,
+    complete_reorder,
+    update_recommended_quantity,
 )
 
 
@@ -69,3 +72,42 @@ def change_recommendation_status(
         )
 
     return result
+
+
+@router.post("/{recommendation_id}/complete", response_model=ReorderRecommendationResponse)
+def complete_recommendation(recommendation_id: UUID):
+    """
+    Complete a reorder: increases product stock, creates an IN transaction,
+    and marks the recommendation as COMPLETED.
+    Only works on ORDERED recommendations (prevents double completion).
+    """
+    result = complete_reorder(recommendation_id)
+
+    if not result:
+        raise HTTPException(
+            status_code=400,
+            detail="Recommendation not found or not in ORDERED status"
+        )
+
+    return result
+
+
+@router.patch("/{recommendation_id}/quantity", response_model=ReorderRecommendationResponse)
+def edit_recommended_quantity(
+    recommendation_id: UUID,
+    body: ReorderQuantityUpdate,
+):
+    """
+    Edit the recommended quantity on a PENDING or ORDERED recommendation.
+    Allows the supervisor to override the system's recommendation.
+    """
+    result = update_recommended_quantity(recommendation_id, body.recommended_quantity)
+
+    if not result:
+        raise HTTPException(
+            status_code=400,
+            detail="Recommendation not found or not editable (must be PENDING or ORDERED)"
+        )
+
+    return result
+

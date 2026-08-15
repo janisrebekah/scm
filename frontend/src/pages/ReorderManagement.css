@@ -217,3 +217,117 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* ── Edit Quantity ─────────────────────────────────────── */
+.reorder-qty-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reorder-qty-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-light);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  opacity: 0;
+}
+
+.reorder-table tbody tr:hover .reorder-qty-edit-btn {
+  opacity: 1;
+}
+
+.reorder-qty-edit-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-bg);
+  opacity: 1;
+}
+
+.reorder-edit-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 100px;
+}
+
+.reorder-edit-wrap > :first-child {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reorder-edit-input {
+  width: 70px;
+  padding: 4px 8px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.reorder-edit-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-bg);
+}
+
+.reorder-edit-input.error {
+  border-color: var(--danger);
+}
+
+.reorder-edit-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.reorder-edit-save,
+.reorder-edit-cancel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.reorder-edit-save {
+  background: var(--success);
+  color: #fff;
+}
+
+.reorder-edit-cancel {
+  background: var(--content-bg);
+  color: var(--text-muted);
+  border: 1px solid var(--card-border);
+}
+
+.reorder-edit-save:hover,
+.reorder-edit-cancel:hover {
+  opacity: 0.85;
+}
+
+.reorder-edit-save:disabled,
+.reorder-edit-cancel:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.reorder-edit-error {
+  font-size: 0.68rem;
+  color: var(--danger);
+  font-weight: 500;
+}

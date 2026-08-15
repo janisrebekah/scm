@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useState } from 'react';
-import { updateReorderStatus } from '../api';
+import { updateReorderStatus, completeReorder, updateReorderQuantity } from '../api';
 import Icon from '../components/Icons';
 import { formatNumber, productName } from '../utils';
 import './ReorderManagement.css';
@@ -14,6 +14,9 @@ const STATUS_STYLE = {
 
 export default function ReorderManagement({ reorders, reorderSummary, onRefresh }) {
   const [updating, setUpdating] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editQty, setEditQty] = useState('');
+  const [editError, setEditError] = useState('');
 
   const handleStatusChange = async (recommendationId, newStatus) => {
     setUpdating(recommendationId);
@@ -22,6 +25,50 @@ export default function ReorderManagement({ reorders, reorderSummary, onRefresh 
       if (onRefresh) await onRefresh();
     } catch (err) {
       console.error('Failed to update reorder status:', err);
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const handleComplete = async (recommendationId) => {
+    setUpdating(recommendationId);
+    try {
+      await completeReorder(recommendationId);
+      if (onRefresh) await onRefresh();
+    } catch (err) {
+      console.error('Failed to complete reorder:', err);
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const startEdit = (recommendation) => {
+    setEditingId(recommendation.recommendation_id);
+    setEditQty(String(recommendation.recommended_quantity));
+    setEditError('');
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditQty('');
+    setEditError('');
+  };
+
+  const saveEdit = async (recommendationId) => {
+    const qty = parseInt(editQty, 10);
+    if (isNaN(qty) || qty <= 0) {
+      setEditError('Must be a positive number');
+      return;
+    }
+
+    setUpdating(recommendationId);
+    setEditError('');
+    try {
+      await updateReorderQuantity(recommendationId, qty);
+      cancelEdit();
+      if (onRefresh) await onRefresh();
+    } catch (err) {
+      setEditError(err.message);
     } finally {
       setUpdating(null);
     }
@@ -111,6 +158,8 @@ export default function ReorderManagement({ reorders, reorderSummary, onRefresh 
                 {reorders.map(r => {
                   const style = STATUS_STYLE[r.status] || {};
                   const isUpdating = updating === r.recommendation_id;
+                  const isEditing = editingId === r.recommendation_id;
+                  const isEditable = r.status === 'PENDING' || r.status === 'ORDERED';
                   return (
                     <tr key={r.recommendation_id}>
                       <td className="reorder-product">{productName(r)}</td>
@@ -119,7 +168,58 @@ export default function ReorderManagement({ reorders, reorderSummary, onRefresh 
                       <td>{r.lead_time_days}d</td>
                       <td>{r.safety_stock}</td>
                       <td>{r.reorder_point}</td>
-                      <td className="reorder-rec-qty">{r.recommended_quantity}</td>
+                      <td className="reorder-rec-qty">
+                        {isEditing ? (
+                          <div className="reorder-edit-wrap">
+                            <input
+                              type="number"
+                              min="1"
+                              className={`reorder-edit-input ${editError ? 'error' : ''}`}
+                              value={editQty}
+                              onChange={(e) => { setEditQty(e.target.value); setEditError(''); }}
+                              disabled={isUpdating}
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') saveEdit(r.recommendation_id);
+                                if (e.key === 'Escape') cancelEdit();
+                              }}
+                            />
+                            <div className="reorder-edit-actions">
+                              <button
+                                className="reorder-edit-save"
+                                onClick={() => saveEdit(r.recommendation_id)}
+                                disabled={isUpdating}
+                                title="Save"
+                              >
+                                <Icon name="checkCircle" size={14} />
+                              </button>
+                              <button
+                                className="reorder-edit-cancel"
+                                onClick={cancelEdit}
+                                disabled={isUpdating}
+                                title="Cancel"
+                              >
+                                <Icon name="x" size={14} />
+                              </button>
+                            </div>
+                            {editError && <div className="reorder-edit-error">{editError}</div>}
+                          </div>
+                        ) : (
+                          <span className="reorder-qty-display">
+                            {r.recommended_quantity}
+                            {isEditable && (
+                              <button
+                                className="reorder-qty-edit-btn"
+                                onClick={() => startEdit(r)}
+                                disabled={isUpdating}
+                                title="Edit quantity"
+                              >
+                                <Icon name="edit" size={12} />
+                              </button>
+                            )}
+                          </span>
+                        )}
+                      </td>
                       <td>
                         <span
                           className="reorder-badge"
@@ -157,7 +257,7 @@ export default function ReorderManagement({ reorders, reorderSummary, onRefresh 
                           {r.status === 'ORDERED' && (
                             <button
                               className="reorder-action-btn complete"
-                              onClick={() => handleStatusChange(r.recommendation_id, 'COMPLETED')}
+                              onClick={() => handleComplete(r.recommendation_id)}
                               disabled={isUpdating}
                               title="Mark as Completed"
                             >

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from uuid import UUID
 from datetime import datetime
 
@@ -23,3 +23,8 @@ class ReorderRecommendationResponse(BaseModel):
 
 class ReorderStatusUpdate(BaseModel):
     status: str
+
+
+class ReorderQuantityUpdate(BaseModel):
+    recommended_quantity: int = Field(ge=1, description="Must be a positive integer")
+
