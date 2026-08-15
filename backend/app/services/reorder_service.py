@@ -2,6 +2,7 @@ from uuid import UUID
 from datetime import datetime, timedelta, timezone
 
 from app.database import supabase
+from app.services.alert_service import resolve_active_alert
 
 
 # Default lead time in days if not configurable per product
@@ -286,7 +287,7 @@ def complete_reorder(recommendation_id: UUID):
     product_response = (
         supabase
         .table("products")
-        .select("current_stock")
+        .select("current_stock, minimum_threshold")
         .eq("product_id", str(product_id))
         .single()
         .execute()
@@ -297,6 +298,7 @@ def complete_reorder(recommendation_id: UUID):
         return None
 
     current_stock = product["current_stock"]
+    minimum_threshold = product["minimum_threshold"]
     new_stock = current_stock + reorder_qty
 
     # 3. Update product stock
@@ -329,6 +331,9 @@ def complete_reorder(recommendation_id: UUID):
         .eq("recommendation_id", str(recommendation_id))
         .execute()
     )
+
+    if new_stock > minimum_threshold:
+        resolve_active_alert(product_id)
 
     return update_response.data[0] if update_response.data else None
 

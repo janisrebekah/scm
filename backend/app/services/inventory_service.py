@@ -59,13 +59,12 @@ def get_inventory_summary():
     )
     active_alerts = active_alerts_response.data
 
-    # 4. Fetch alert history (all alerts, newest first, limited)
+    # 4. Fetch complete alert history (all alerts, newest first)
     alert_history_response = (
         supabase
         .table("alerts")
-        .select("*, products(product_name)")
+        .select("*, products(product_name, current_stock, minimum_threshold)")
         .order("created_at", desc=True)
-        .limit(50)
         .execute()
     )
     alert_history = alert_history_response.data

@@ -177,6 +177,18 @@
   font-size: 0.78rem !important;
 }
 
+.history-stock {
+  font-weight: 700;
+  color: var(--text-primary) !important;
+  white-space: nowrap;
+}
+
+.history-message {
+  min-width: 220px;
+  max-width: 420px;
+  line-height: 1.45;
+}
+
 /* ── Badge ──────────────────────────────────────────────── */
 .history-badge {
   display: inline-block;

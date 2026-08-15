@@ -47,9 +47,9 @@ export default function AlertsHistory({ history }) {
       {/* Stats */}
       <div className="history-stats-bar">
         <div className="history-stat">
-          <Icon name="clock" size={15} color="var(--primary)" />
+          <Icon name="bell" size={15} color="var(--primary)" />
           <span className="history-stat-count">{totalCount}</span>
-          <span className="history-stat-label">Total</span>
+          <span className="history-stat-label">Total Alerts</span>
         </div>
         <div className="history-stat">
           <span className="history-stat-dot" style={{ background: 'var(--warning)' }} />
@@ -116,6 +116,9 @@ export default function AlertsHistory({ history }) {
                   <th>Alert Type</th>
                   <th>Severity</th>
                   <th>Status</th>
+                  <th>Current Stock</th>
+                  <th>Threshold</th>
+                  <th>Details</th>
                   <th>Created At</th>
                   <th>Resolved At</th>
                 </tr>
@@ -164,6 +167,9 @@ export default function AlertsHistory({ history }) {
                           {a.status}
                         </span>
                       </td>
+                      <td className="history-stock">{a.products?.current_stock ?? 'â€”'}</td>
+                      <td className="history-stock">{a.products?.minimum_threshold ?? 'â€”'}</td>
+                      <td className="history-message">{a.message}</td>
                       <td className="history-date">{formatDate(a.created_at)}</td>
                       <td className="history-date">{formatDate(a.resolved_at)}</td>
                     </tr>

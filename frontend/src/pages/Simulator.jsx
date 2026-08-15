@@ -105,254 +105,205 @@ export default function Simulator({ products, onRefresh }) {
     URL.revokeObjectURL(url);
   };
 
+  const stockHealth = (prod) => {
+    if (!prod) return null;
+    if (prod.current_stock === 0) return { label: 'Out of Stock', cls: 'out' };
+    if (prod.current_stock <= prod.minimum_threshold) return { label: 'Low Stock', cls: 'low' };
+    return { label: 'Healthy', cls: 'ok' };
+  };
+
+  const health = stockHealth(selectedProd);
+
   return (
-    <div className="simulator-page">
-      {/* Transaction Form Card */}
-      <div className="sim-card">
-        <div className="sim-card-header">
-          <div className="sim-card-title">
-            <Icon name="zap" size={18} color="var(--primary)" />
-            <span>Record Transaction</span>
-          </div>
-          <p className="sim-card-desc">
-            Record incoming or outgoing inventory transactions. Select a product, choose the transaction type, and enter the quantity.
-          </p>
-        </div>
+    <div className="sim-page">
+      {/* ════ TWO-PANEL LAYOUT ════ */}
+      <div className="sim-layout">
 
-        <div className="sim-form-grid">
-          <div className="sim-field">
-            <label htmlFor="sim-type">Transaction Type</label>
-            <select
-              id="sim-type"
-              value={transactionType}
-              onChange={(e) => setTransactionType(e.target.value)}
+        {/* ──── LEFT: FORM PANEL ──── */}
+        <div className="sim-form-panel">
+          <div className="sim-panel-card">
+            <h3 className="sim-panel-title">Transaction Type</h3>
+            <div className="sim-type-grid">
+              <button
+                className={`sim-type-btn ${transactionType === 'IN' ? 'active in' : ''}`}
+                onClick={() => setTransactionType('IN')}
+                disabled={submitting}
+              >
+                <Icon name="plus" size={18} />
+                <span>Incoming</span>
+              </button>
+              <button
+                className={`sim-type-btn ${transactionType === 'OUT' ? 'active out' : ''}`}
+                onClick={() => setTransactionType('OUT')}
+                disabled={submitting}
+              >
+                <Icon name="truck" size={18} />
+                <span>Outgoing</span>
+              </button>
+            </div>
+
+            <div className="sim-form-fields">
+              <div className="sim-field">
+                <label htmlFor="sim-product">Product</label>
+                <select
+                  id="sim-product"
+                  value={selectedProduct}
+                  onChange={(e) => setSelectedProduct(e.target.value)}
+                  disabled={submitting}
+                >
+                  <option value="">Select product...</option>
+                  {products?.map((p) => (
+                    <option key={p.product_id} value={p.product_id}>
+                      {p.product_name} (stock: {p.current_stock})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Current Stock Indicator */}
+              {selectedProd && (
+                <div className="sim-stock-indicator">
+                  <div className="sim-stock-row">
+                    <span>Current Stock</span>
+                    <strong>{selectedProd.current_stock} units</strong>
+                  </div>
+                  {health && <span className={`sim-health-badge ${health.cls}`}>{health.label}</span>}
+                </div>
+              )}
+
+              <div className="sim-field">
+                <label htmlFor="sim-qty">Quantity</label>
+                <input
+                  id="sim-qty"
+                  type="number"
+                  min="1"
+                  placeholder="Enter quantity"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  disabled={submitting}
+                />
+              </div>
+            </div>
+
+            <button
+              className="sim-submit-btn"
+              onClick={handleSubmit}
               disabled={submitting}
             >
-              <option value="IN">Incoming</option>
-              <option value="OUT">Outgoing</option>
-            </select>
+              {submitting ? (
+                <><span className="sim-spinner" /> Processing...</>
+              ) : (
+                <><Icon name="checkCircle" size={15} /> Record Transaction</>
+              )}
+            </button>
           </div>
 
-          <div className="sim-field">
-            <label htmlFor="sim-product">Product</label>
-            <select
-              id="sim-product"
-              value={selectedProduct}
-              onChange={(e) => setSelectedProduct(e.target.value)}
-              disabled={submitting}
-            >
-              <option value="">Select product...</option>
-              {products?.map((p) => (
-                <option key={p.product_id} value={p.product_id}>
-                  {p.product_name} (stock: {p.current_stock})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="sim-field">
-            <label htmlFor="sim-qty">Quantity</label>
-            <input
-              id="sim-qty"
-              type="number"
-              min="1"
-              placeholder="Enter quantity"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              disabled={submitting}
-            />
-          </div>
-        </div>
-
-        <div className="sim-actions">
-          <button
-            className="sim-btn sim-btn-record"
-            onClick={handleSubmit}
-            disabled={submitting}
-          >
-            <Icon name="checkCircle" size={15} />
-            Record Transaction
-          </button>
-        </div>
-
-        {submitting && (
-          <div className="sim-loading">
-            <span className="sim-spinner" />
-            Processing transaction...
-          </div>
-        )}
-      </div>
-
-      {/* Result Card */}
-      {result && !submitting && (
-        <div className={`sim-result-card ${result.type}`}>
-          {result.type === 'error' ? (
-            <>
-              <div className="sim-result-header error">
-                <Icon name="xCircle" size={18} />
-                <span>Transaction Failed</span>
-              </div>
-              <p className="sim-result-error">{result.error}</p>
-            </>
-          ) : (
-            <>
-              <div className="sim-result-header success">
-                <Icon name="checkCircle" size={18} />
-                <span>{displayType(result.txType)} — {selectedProd?.product_name || 'Product'}</span>
-              </div>
-
-              {/* Stock Flow */}
-              <div className="sim-flow">
-                <div className="sim-flow-box">
-                  <div className="sim-flow-label">Previous</div>
-                  <div className="sim-flow-value">{result.data.previous_stock}</div>
+          {/* Result Feedback */}
+          {result && !submitting && (
+            <div className={`sim-result ${result.type}`}>
+              {result.type === 'error' ? (
+                <div className="sim-result-inner">
+                  <Icon name="xCircle" size={16} />
+                  <span>{result.error}</span>
                 </div>
-                <div className="sim-flow-arrow">
-                  <Icon name="arrowUpRight" size={16} color="var(--text-muted)" style={{ transform: 'rotate(90deg)' }} />
-                </div>
-                <div className="sim-flow-box">
-                  <div className="sim-flow-label">Change</div>
-                  <div className={`sim-flow-value ${result.data.quantity >= 0 ? 'positive' : 'negative'}`}>
-                    {result.data.quantity >= 0 ? '+' : ''}{result.data.quantity}
+              ) : (
+                <>
+                  <div className="sim-result-inner success">
+                    <Icon name="checkCircle" size={16} />
+                    <span>{displayType(result.txType)} — {selectedProd?.product_name || 'Product'}</span>
                   </div>
-                </div>
-                <div className="sim-flow-arrow">
-                  <Icon name="arrowUpRight" size={16} color="var(--text-muted)" style={{ transform: 'rotate(90deg)' }} />
-                </div>
-                <div className="sim-flow-box highlight">
-                  <div className="sim-flow-label">New Stock</div>
-                  <div className="sim-flow-value">{result.data.new_stock}</div>
-                </div>
-              </div>
-
-              {/* Triggered Events */}
-              <div className="sim-events">
-                {result.data.alert && (
-                  <div className="sim-event-row">
-                    <span className="sim-event-badge alert-badge">
-                      <Icon name="bell" size={12} />
-                    </span>
-                    <span className="sim-event-text">
-                      <strong>{result.data.alert.alert_type?.replace('_', ' ')}</strong>
-                      {' '}— {result.data.alert.severity} — {result.data.alert.status}
-                    </span>
+                  <div className="sim-flow">
+                    <div className="sim-flow-box">
+                      <span>Previous</span>
+                      <strong>{result.data.previous_stock}</strong>
+                    </div>
+                    <div className="sim-flow-arrow">→</div>
+                    <div className={`sim-flow-box ${result.data.quantity >= 0 ? 'change-in' : 'change-out'}`}>
+                      <span>Change</span>
+                      <strong>{result.data.quantity >= 0 ? '+' : ''}{result.data.quantity}</strong>
+                    </div>
+                    <div className="sim-flow-arrow">→</div>
+                    <div className="sim-flow-box highlight">
+                      <span>New Stock</span>
+                      <strong>{result.data.new_stock}</strong>
+                    </div>
                   </div>
-                )}
-                {result.data.reorder_recommendation && (
-                  <div className="sim-event-row">
-                    <span className="sim-event-badge reorder-badge">
-                      <Icon name="refreshCw" size={12} />
-                    </span>
-                    <span className="sim-event-text">
-                      Reorder recommended: <strong>{result.data.reorder_recommendation.recommended_quantity} units</strong>
-                      {' '}— {result.data.reorder_recommendation.status}
-                    </span>
+                  <div className="sim-events">
+                    {result.data.alert && (
+                      <div className="sim-event"><span className="sim-ev-dot alert" /><span><strong>{result.data.alert.alert_type?.replace('_', ' ')}</strong> — {result.data.alert.severity}</span></div>
+                    )}
+                    {result.data.reorder_recommendation && (
+                      <div className="sim-event"><span className="sim-ev-dot reorder" /><span>Reorder: <strong>{result.data.reorder_recommendation.recommended_quantity} units</strong></span></div>
+                    )}
+                    {result.data.notification && (
+                      <div className="sim-event"><span className={`sim-ev-dot ${result.data.notification.status === 'SENT' ? 'notif' : 'notif-fail'}`} /><span>{result.data.notification.channel}: <strong>{result.data.notification.status}</strong></span></div>
+                    )}
+                    {!result.data.alert && !result.data.reorder_recommendation && !result.data.notification && (
+                      <div className="sim-event"><span className="sim-ev-dot ok" /><span>No alerts or recommendations triggered.</span></div>
+                    )}
                   </div>
-                )}
-                {result.data.notification && (
-                  <div className="sim-event-row">
-                    <span className={`sim-event-badge ${result.data.notification.status === 'SENT' ? 'notif-badge' : 'notif-fail-badge'}`}>
-                      <Icon name={result.data.notification.status === 'SENT' ? 'checkCircle' : 'xCircle'} size={12} />
-                    </span>
-                    <span className="sim-event-text">
-                      {result.data.notification.channel}: <strong>{result.data.notification.status}</strong>
-                      {' '}→ {result.data.notification.recipient}
-                    </span>
-                  </div>
-                )}
-                {!result.data.alert && !result.data.reorder_recommendation && !result.data.notification && (
-                  <div className="sim-event-row">
-                    <span className="sim-event-badge neutral-badge">
-                      <Icon name="checkCircle" size={12} />
-                    </span>
-                    <span className="sim-event-text">No alerts or recommendations triggered.</span>
-                  </div>
-                )}
-              </div>
-            </>
+                </>
+              )}
+            </div>
           )}
         </div>
-      )}
 
-      {/* Transaction History Card */}
-      <div className="sim-card">
-        <div className="sim-card-header">
-          <div className="sim-card-title">
-            <Icon name="clock" size={18} color="var(--primary)" />
-            <span>Transaction History</span>
-          </div>
-        </div>
-
-        <div className="sim-history-toolbar">
-          <div className="sim-filter-tabs">
-            <button
-              className={`sim-filter-tab ${txFilter === '' ? 'active' : ''}`}
-              onClick={() => setTxFilter('')}
-            >
-              All
-            </button>
-            <button
-              className={`sim-filter-tab ${txFilter === 'IN' ? 'active' : ''}`}
-              onClick={() => setTxFilter('IN')}
-            >
-              Incoming
-            </button>
-            <button
-              className={`sim-filter-tab ${txFilter === 'OUT' ? 'active' : ''}`}
-              onClick={() => setTxFilter('OUT')}
-            >
-              Outgoing
-            </button>
-          </div>
-          <button
-            className="sim-export-btn"
-            onClick={handleExportCSV}
-            disabled={transactions.length === 0}
-          >
-            <Icon name="download" size={14} />
-            Export CSV
-          </button>
-        </div>
-
-        <div className="sim-table-wrap">
-          {txLoading ? (
-            <div className="sim-loading" style={{ justifyContent: 'center', padding: '32px' }}>
-              <span className="sim-spinner" />
-              Loading transactions...
+        {/* ──── RIGHT: TRANSACTION LOG ──── */}
+        <div className="sim-log-panel">
+          <div className="sim-panel-card sim-log-card">
+            <div className="sim-log-header">
+              <h3 className="sim-panel-title">Transaction Log</h3>
+              <span className="sim-log-count">{transactions.length} total</span>
             </div>
-          ) : transactions.length === 0 ? (
-            <div className="sim-empty">
-              <Icon name="inbox" size={32} color="var(--text-light)" />
-              <p>No transactions found.</p>
+
+            <div className="sim-log-toolbar">
+              <div className="sim-filter-tabs">
+                <button className={`sim-tab ${txFilter === '' ? 'active' : ''}`} onClick={() => setTxFilter('')}>All Types</button>
+                <button className={`sim-tab ${txFilter === 'IN' ? 'active' : ''}`} onClick={() => setTxFilter('IN')}>Incoming</button>
+                <button className={`sim-tab ${txFilter === 'OUT' ? 'active' : ''}`} onClick={() => setTxFilter('OUT')}>Outgoing</button>
+              </div>
+              <button className="sim-export-btn" onClick={handleExportCSV} disabled={transactions.length === 0}>
+                <Icon name="download" size={13} /> Export
+              </button>
             </div>
-          ) : (
-            <table className="sim-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Product</th>
-                  <th>Type</th>
-                  <th>Quantity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((tx) => (
-                  <tr key={tx.transaction_id}>
-                    <td>{formatDate(tx.created_at)}</td>
-                    <td className="sim-tx-product">{tx.products?.product_name || '—'}</td>
-                    <td>
-                      <span className={`sim-tx-type-badge ${tx.transaction_type === 'IN' ? 'sim-tx-in' : tx.transaction_type === 'OUT' ? 'sim-tx-out' : ''}`}>
-                        {displayType(tx.transaction_type)}
-                      </span>
-                    </td>
-                    <td className={`sim-tx-qty ${tx.quantity >= 0 ? 'positive' : 'negative'}`}>
-                      {tx.quantity >= 0 ? '+' : ''}{tx.quantity}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+
+            <div className="sim-log-table-wrap">
+              {txLoading ? (
+                <div className="sim-loading"><span className="sim-spinner" /> Loading...</div>
+              ) : transactions.length === 0 ? (
+                <div className="sim-log-empty"><Icon name="inbox" size={28} /><p>No transactions found.</p></div>
+              ) : (
+                <table className="sim-log-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Product</th>
+                      <th>Type</th>
+                      <th>Qty</th>
+                      <th>Balance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transactions.map((tx) => (
+                      <tr key={tx.transaction_id}>
+                        <td className="sim-log-date">{formatDate(tx.created_at)}</td>
+                        <td className="sim-log-product">{tx.products?.product_name || '—'}</td>
+                        <td>
+                          <span className={`sim-log-type ${tx.transaction_type === 'IN' ? 'in' : tx.transaction_type === 'OUT' ? 'out' : ''}`}>
+                            {displayType(tx.transaction_type)}
+                          </span>
+                        </td>
+                        <td className={`sim-log-qty ${tx.quantity >= 0 ? 'pos' : 'neg'}`}>
+                          {tx.quantity >= 0 ? '+' : ''}{tx.quantity}
+                        </td>
+                        <td className="sim-log-balance">{tx.products?.current_stock ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

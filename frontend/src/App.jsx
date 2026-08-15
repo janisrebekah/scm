@@ -11,7 +11,6 @@ import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import Simulator from './pages/Simulator';
 import InventoryOverview from './pages/InventoryOverview';
-import ActiveAlerts from './pages/ActiveAlerts';
 import ReorderManagement from './pages/ReorderManagement';
 import AlertsHistory from './pages/AlertsHistory';
 
@@ -20,9 +19,8 @@ const PAGE_META = {
   dashboard:  { title: 'Dashboard',            subtitle: 'Real-time inventory command center' },
   simulator:  { title: 'Inventory Simulator',   subtitle: 'Simulate transactions and observe live effects' },
   inventory:  { title: 'Inventory Overview',     subtitle: 'Browse and filter all products' },
-  alerts:     { title: 'Active Alerts',          subtitle: 'Currently active stock alerts' },
+  alerts:     { title: 'Alerts',                 subtitle: 'Complete alert history and resolution status' },
   reorder:    { title: 'Reorder Management',     subtitle: 'Manage reorder recommendations' },
-  history:    { title: 'Alerts History',         subtitle: 'Historical alert records' },
 };
 
 /* ── App Shell ─────────────────────────────────────────── */
@@ -144,7 +142,8 @@ function App() {
   if (!data) return null;
 
   /* ── Derived counts for sidebar badges ───────────────── */
-  const alertCount = data.active_alerts?.length || 0;
+  const alertCount = (data.alert_history || data.active_alerts || [])
+    .filter(alert => alert.status === 'ACTIVE').length;
   const reorderCount = data.reorder_summary?.pending_reorders || 0;
 
   const pageMeta = PAGE_META[activePage] || PAGE_META.dashboard;
@@ -159,7 +158,7 @@ function App() {
       case 'inventory':
         return <InventoryOverview products={data.products} onRefresh={loadDashboard} />;
       case 'alerts':
-        return <ActiveAlerts alerts={data.active_alerts} />;
+        return <AlertsHistory history={data.alert_history} />;
       case 'reorder':
         return (
           <ReorderManagement
@@ -168,8 +167,6 @@ function App() {
             onRefresh={loadDashboard}
           />
         );
-      case 'history':
-        return <AlertsHistory history={data.alert_history} />;
       default:
         return <Dashboard data={data} />;
     }

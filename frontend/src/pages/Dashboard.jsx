@@ -1,383 +1,358 @@
-/* eslint-disable react/prop-types */
+import { useMemo, useState } from 'react';
 import Icon from '../components/Icons';
-import { formatNumber, formatCurrency } from '../utils';
 import {
-  PieChart, Pie, Cell,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend,
+  formatDate,
+  formatDateOnly,
+  formatNumber,
+  getExpiryStatus,
+  productName,
+} from '../utils';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 import './Dashboard.css';
 
-const STATUS_COLORS = {
-  healthy: '#22c55e',
-  low: '#f59e0b',
-  out: '#ef4444',
-};
+const DAY_MS = 1000 * 60 * 60 * 24;
 
-const TX_COLORS = {
-  SALE: '#ef4444',
-  CONSUMPTION: '#f97316',
-  RECEIPT: '#22c55e',
-  ADJUSTMENT: '#6366f1',
-};
+function daysUntil(expiryDate) {
+  if (!expiryDate) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expiry = new Date(expiryDate);
+  expiry.setHours(0, 0, 0, 0);
+  return Math.ceil((expiry - today) / DAY_MS);
+}
 
+function navigateTo(label) {
+  const navButton = Array.from(document.querySelectorAll('.nav-item')).find((btn) => (
+    btn.querySelector('.nav-label')?.textContent === label
+  ));
+  navButton?.click();
+}
+
+function shortDateLabel(date) {
+  return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+}
+
+function buildMovementSeries(transactions, days) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(today);
+  start.setDate(today.getDate() - (days - 1));
+  const buckets = Array.from({ length: days }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    return { key: d.toISOString().slice(0, 10), label: shortDateLabel(d), Incoming: 0, Outgoing: 0 };
+  });
+  const byKey = new Map(buckets.map((b) => [b.key, b]));
+  transactions.forEach((tx) => {
+    if (!tx.created_at) return;
+    const d = new Date(tx.created_at);
+    d.setHours(0, 0, 0, 0);
+    if (d < start || d > today) return;
+    const b = byKey.get(d.toISOString().slice(0, 10));
+    if (!b) return;
+    if (tx.transaction_type === 'IN') b.Incoming += Math.abs(tx.quantity || 0);
+    if (tx.transaction_type === 'OUT') b.Outgoing += Math.abs(tx.quantity || 0);
+  });
+  return buckets;
+}
+
+function ChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="d-tooltip">
+      <p className="d-tooltip-lbl">{label}</p>
+      {payload.map((e) => (
+        <p key={e.dataKey} style={{ color: e.color }} className="d-tooltip-val">{e.name}: <strong>{formatNumber(e.value)}</strong></p>
+      ))}
+    </div>
+  );
+}
+
+/* eslint-disable react/prop-types */
 export default function Dashboard({ data }) {
-  if (!data) return null;
+  const [movePeriod, setMovePeriod] = useState(7);
 
   const {
-    inventory_status: inv,
-    products,
-    active_alerts: alerts,
-    reorder_recommendations: reorders,
-    reorder_summary: reorderSum,
-    recent_transactions: transactions,
-    alert_history: history,
-  } = data;
+    inventory_status: inv = {},
+    products = [],
+    active_alerts: alerts = [],
+    reorder_recommendations: reorders = [],
+    recent_transactions: transactions = [],
+    reorder_summary: reorderSum = {},
+  } = data || {};
 
-  /* ── Derived data ──────────────────────────────────── */
+  /* ─── derived data ─── */
+  const expiryProducts = useMemo(() => (
+    products
+      .map((p) => ({ ...p, expiryStatus: getExpiryStatus(p.expiry_date), daysLeft: daysUntil(p.expiry_date) }))
+      .filter((p) => p.expiryStatus === 'near-expiry' || p.expiryStatus === 'expired')
+      .sort((a, b) => (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999))
+  ), [products]);
 
-  // Inventory value
-  const inventoryValue = products.reduce(
-    (sum, p) => sum + (p.current_stock || 0) * (p.unit_price || 0), 0
-  );
+  const expiredList = expiryProducts.filter((p) => p.expiryStatus === 'expired');
+  const nearExpiryList = expiryProducts.filter((p) => p.expiryStatus === 'near-expiry');
 
-  // Status distribution for pie chart
-  const statusData = [
-    { name: 'Healthy', value: inv.healthy_products, color: STATUS_COLORS.healthy },
-    { name: 'Low Stock', value: inv.low_stock_products, color: STATUS_COLORS.low },
-    { name: 'Out of Stock', value: inv.out_of_stock_products, color: STATUS_COLORS.out },
-  ].filter(d => d.value > 0);
+  const total = inv.total_products ?? products.length;
+  const healthy = inv.healthy_products ?? 0;
+  const low = inv.low_stock_products ?? 0;
+  const out = inv.out_of_stock_products ?? 0;
+  const nearExpCt = nearExpiryList.length;
+  const expiredCt = expiredList.length;
+  const healthPct = total > 0 ? Math.round((healthy / total) * 100) : 0;
+  const totalStock = products.reduce((s, p) => s + (p.current_stock || 0), 0);
 
-  // Top products stock vs threshold (sorted by lowest stock ratio)
-  const stockChartData = [...products]
-    .sort((a, b) => {
-      const ratioA = a.minimum_threshold > 0 ? a.current_stock / a.minimum_threshold : 999;
-      const ratioB = b.minimum_threshold > 0 ? b.current_stock / b.minimum_threshold : 999;
-      return ratioA - ratioB;
-    })
-    .slice(0, 8)
-    .map(p => ({
-      name: p.product_name.length > 14 ? p.product_name.slice(0, 14) + '…' : p.product_name,
-      stock: p.current_stock,
-      threshold: p.minimum_threshold,
-    }));
+  const inOut = transactions.filter((tx) => tx.transaction_type === 'IN' || tx.transaction_type === 'OUT');
+  const series = buildMovementSeries(inOut, movePeriod);
+  const moveTotals = series.reduce((t, d) => ({ inc: t.inc + d.Incoming, outg: t.outg + d.Outgoing }), { inc: 0, outg: 0 });
+  const net = moveTotals.inc - moveTotals.outg;
 
-  // Transaction type counts
-  const txCounts = {};
-  transactions.forEach(t => {
-    txCounts[t.transaction_type] = (txCounts[t.transaction_type] || 0) + 1;
-  });
-  const txData = Object.entries(txCounts).map(([name, count]) => ({
-    name: name.charAt(0) + name.slice(1).toLowerCase(),
-    count,
-    fill: TX_COLORS[name] || '#6366f1',
-  }));
+  const lowStockList = products
+    .filter(p => p.current_stock > 0 && p.current_stock <= p.minimum_threshold)
+    .sort((a, b) => a.current_stock - b.current_stock);
 
-  // Alert severity counts
-  const severityCounts = {};
-  alerts.forEach(a => {
-    severityCounts[a.severity] = (severityCounts[a.severity] || 0) + 1;
-  });
+  const pending = reorders.filter((r) => r.status === 'PENDING').sort((a, b) => (a.current_stock ?? 0) - (b.current_stock ?? 0));
 
-  // Category distribution
-  const categoryCounts = {};
-  products.forEach(p => {
-    const cat = p.category || 'Uncategorized';
-    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
-  });
+  /* ─── smart insight ─── */
+  const insight = (() => {
+    const o = products.find((p) => p.current_stock === 0);
+    if (o) return { tone: 'danger', icon: 'xCircle', title: `${o.product_name} is out of stock`, desc: `0 units vs minimum ${formatNumber(o.minimum_threshold)}`, target: 'Reorder Management', cta: 'Review Reorder' };
+    const e = expiryProducts[0];
+    if (e) return { tone: e.expiryStatus === 'expired' ? 'danger' : 'warning', icon: 'clock', title: e.expiryStatus === 'expired' ? `${e.product_name} expired` : `${e.product_name} expires in ${e.daysLeft}d`, desc: `Expiry: ${formatDateOnly(e.expiry_date)}`, target: 'Inventory Overview', cta: 'Review Inventory' };
+    const l = lowStockList[0];
+    if (l) return { tone: 'warning', icon: 'target', title: `${l.product_name} is running low`, desc: `${formatNumber(l.current_stock)} / ${formatNumber(l.minimum_threshold)} units`, target: 'Reorder Management', cta: 'Review Reorder' };
+    return { tone: 'success', icon: 'checkCircle', title: 'Inventory is healthy', desc: `${formatNumber(healthy)} of ${formatNumber(total)} products in good standing.`, target: 'Inventory Overview', cta: 'View Inventory' };
+  })();
 
-  /* ── KPI definitions ───────────────────────────────── */
-  const kpis = [
-    {
-      label: 'Total Products',
-      value: formatNumber(inv.total_products),
-      icon: 'package',
-      color: '#3b82f6',
-      bg: 'rgba(59, 130, 246, 0.10)',
-    },
-    {
-      label: 'Total Stock Units',
-      value: formatNumber(inv.total_stock_units),
-      icon: 'layers',
-      color: '#22c55e',
-      bg: 'rgba(34, 197, 94, 0.10)',
-    },
-    {
-      label: 'Inventory Value',
-      value: formatCurrency(inventoryValue),
-      icon: 'dollarSign',
-      color: '#7c5cfc',
-      bg: 'rgba(124, 92, 252, 0.10)',
-    },
-    {
-      label: 'Low Stock Items',
-      value: formatNumber(inv.low_stock_products),
-      icon: 'alertTriangle',
-      color: '#f59e0b',
-      bg: 'rgba(245, 158, 11, 0.10)',
-    },
-    {
-      label: 'Out of Stock',
-      value: formatNumber(inv.out_of_stock_products),
-      icon: 'minusCircle',
-      color: '#ef4444',
-      bg: 'rgba(239, 68, 68, 0.10)',
-    },
-    {
-      label: 'Active Alerts',
-      value: formatNumber(alerts.length),
-      icon: 'bell',
-      color: '#ec4899',
-      bg: 'rgba(236, 72, 153, 0.10)',
-    },
-  ];
-
-  /* ── Custom tooltip ────────────────────────────────── */
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (!active || !payload?.length) return null;
-    return (
-      <div className="chart-tooltip">
-        <p className="chart-tooltip-label">{label}</p>
-        {payload.map((entry, i) => (
-          <p key={i} className="chart-tooltip-value" style={{ color: entry.color || entry.fill }}>
-            {entry.name}: <strong>{entry.value}</strong>
-          </p>
-        ))}
-      </div>
-    );
-  };
+  /* ─── health donut data ─── */
+  const donutData = [{ value: healthPct }, { value: 100 - healthPct }];
 
   return (
-    <div className="dashboard-page">
-      {/* KPI Cards */}
-      <div className="kpi-grid">
-        {kpis.map((kpi, i) => (
-          <div className="kpi-card" key={i}>
-            <div className="kpi-icon" style={{ background: kpi.bg }}>
-              <Icon name={kpi.icon} size={20} color={kpi.color} />
-            </div>
-            <div className="kpi-content">
-              <div className="kpi-value">{kpi.value}</div>
-              <div className="kpi-label">{kpi.label}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className="d-page">
 
-      {/* Charts Row 1 */}
-      <div className="chart-row">
-        {/* Inventory Status Distribution */}
-        <div className="chart-card">
-          <div className="chart-card-header">
-            <h3 className="chart-title">
-              <Icon name="pieChart" size={16} color="var(--primary)" />
-              Inventory Status
-            </h3>
-          </div>
-          <div className="chart-body pie-chart-body">
-            {statusData.length > 0 ? (
-              <>
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie
-                      data={statusData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={55}
-                      outerRadius={85}
-                      paddingAngle={3}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {statusData.map((entry, index) => (
-                        <Cell key={index} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (!active || !payload?.length) return null;
-                        return (
-                          <div className="chart-tooltip">
-                            <p className="chart-tooltip-value" style={{ color: payload[0].payload.color }}>
-                              {payload[0].name}: <strong>{payload[0].value}</strong>
-                            </p>
-                          </div>
-                        );
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="pie-legend">
-                  {statusData.map((d, i) => (
-                    <div className="pie-legend-item" key={i}>
-                      <span className="pie-legend-dot" style={{ background: d.color }} />
-                      <span className="pie-legend-label">{d.name}</span>
-                      <span className="pie-legend-value">{d.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="chart-empty">No product data available</div>
-            )}
-          </div>
-        </div>
+      {/* ════ TOP: STAT CARDS ════ */}
+      <section className="d-stats-row">
+        <div className="d-stat"><div className="d-stat-ic d-ic-purple"><Icon name="layers" size={20} /></div><div><strong>{formatNumber(total)}</strong><span>Total Products</span></div></div>
+        <div className="d-stat"><div className="d-stat-ic d-ic-amber"><Icon name="activity" size={20} /></div><div><strong>{formatNumber(totalStock)}</strong><span>Total Stock</span></div></div>
+        <div className="d-stat"><div className="d-stat-ic d-ic-rose"><Icon name="xCircle" size={20} /></div><div><strong>{formatNumber(out)}</strong><span>Out of Stock</span></div></div>
+        <div className="d-stat"><div className="d-stat-ic d-ic-mag"><Icon name="bell" size={20} /></div><div><strong>{formatNumber(alerts.length)}</strong><span>Active Alerts</span></div></div>
+        <div className="d-stat"><div className="d-stat-ic d-ic-green"><Icon name="refreshCw" size={20} /></div><div><strong>{formatNumber(reorderSum.pending_reorders || pending.length)}</strong><span>Pending Reorders</span></div></div>
+      </section>
 
-        {/* Stock Levels */}
-        <div className="chart-card chart-card-wide">
-          <div className="chart-card-header">
-            <h3 className="chart-title">
-              <Icon name="barChart" size={16} color="var(--primary)" />
-              Stock Levels vs Threshold
-            </h3>
-            <span className="chart-subtitle">Top 8 products by urgency</span>
-          </div>
-          <div className="chart-body">
-            {stockChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={stockChartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#eef0f6" vertical={false} />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 11, fill: '#9ca3af' }}
-                    axisLine={{ stroke: '#eef0f6' }}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: '#9ca3af' }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend
-                    wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
-                  />
-                  <Bar dataKey="stock" name="Current Stock" fill="#7c5cfc" radius={[4, 4, 0, 0]} barSize={20} />
-                  <Bar dataKey="threshold" name="Min Threshold" fill="#e5e7eb" radius={[4, 4, 0, 0]} barSize={20} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="chart-empty">No stock data available</div>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* ════ MAIN TWO-PANEL LAYOUT ════ */}
+      <section className="d-main-layout">
 
-      {/* Charts Row 2 */}
-      <div className="chart-row">
-        {/* Transaction Activity */}
-        <div className="chart-card">
-          <div className="chart-card-header">
-            <h3 className="chart-title">
-              <Icon name="activity" size={16} color="var(--primary)" />
-              Recent Transactions
-            </h3>
-            <span className="chart-subtitle">Last 20 transactions by type</span>
-          </div>
-          <div className="chart-body">
-            {txData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={txData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#eef0f6" vertical={false} />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 11, fill: '#9ca3af' }}
-                    axisLine={{ stroke: '#eef0f6' }}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: '#9ca3af' }}
-                    axisLine={false}
-                    tickLine={false}
-                    allowDecimals={false}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" name="Count" radius={[6, 6, 0, 0]} barSize={36}>
-                    {txData.map((entry, index) => (
-                      <Cell key={index} fill={entry.fill} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="chart-empty">No recent transactions</div>
-            )}
-          </div>
-        </div>
+        {/* ──── LEFT: PRIMARY CONTENT ──── */}
+        <div className="d-primary">
 
-        {/* Reorder & Alert Summary */}
-        <div className="chart-card">
-          <div className="chart-card-header">
-            <h3 className="chart-title">
-              <Icon name="target" size={16} color="var(--primary)" />
-              Operations Summary
-            </h3>
-          </div>
-          <div className="chart-body summary-body">
-            {/* Reorder Summary */}
-            <div className="summary-section">
-              <div className="summary-section-title">Reorder Status</div>
-              <div className="summary-row-grid">
-                <div className="summary-mini-card">
-                  <span className="summary-mini-value" style={{ color: 'var(--warning)' }}>{reorderSum.pending_reorders}</span>
-                  <span className="summary-mini-label">Pending</span>
+          {/* INVENTORY HEALTH */}
+          <div className="d-card d-health">
+            <div className="d-card-top"><h3>Inventory Health Overview</h3></div>
+            <div className="d-health-grid">
+              <div className="d-donut-area">
+                <div className="d-donut-wrap">
+                  <ResponsiveContainer width={150} height={150}>
+                    <PieChart>
+                      <Pie data={donutData} cx="50%" cy="50%" innerRadius={50} outerRadius={68} startAngle={90} endAngle={-270} dataKey="value" stroke="none">
+                        <Cell fill="#451952" />
+                        <Cell fill="#ede8f2" />
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="d-donut-label"><strong>{healthPct}%</strong><span>Healthy</span></div>
                 </div>
-                <div className="summary-mini-card">
-                  <span className="summary-mini-value" style={{ color: 'var(--primary)' }}>{reorderSum.ordered_reorders}</span>
-                  <span className="summary-mini-label">Ordered</span>
-                </div>
-                <div className="summary-mini-card">
-                  <span className="summary-mini-value" style={{ color: 'var(--success)' }}>{reorderSum.completed_reorders}</span>
-                  <span className="summary-mini-label">Completed</span>
-                </div>
-                <div className="summary-mini-card">
-                  <span className="summary-mini-value" style={{ color: 'var(--text-primary)' }}>{formatNumber(reorderSum.total_recommended_units)}</span>
-                  <span className="summary-mini-label">Rec. Units</span>
-                </div>
+                <p className="d-health-headline">{formatNumber(healthy)} of {formatNumber(total)} products healthy</p>
+              </div>
+              <div className="d-health-metrics">
+                <div className="d-hm"><span>Total</span><strong>{formatNumber(total)}</strong><i className="d-hm-bar d-hm-purple" /></div>
+                <div className="d-hm"><span>Low Stock</span><strong className="tc-amber">{formatNumber(low)}</strong><i className="d-hm-bar d-hm-amber" /></div>
+                <div className="d-hm"><span>Out of Stock</span><strong className="tc-rose">{formatNumber(out)}</strong><i className="d-hm-bar d-hm-rose" /></div>
+                <div className="d-hm"><span>Near Expiry</span><strong className="tc-amber">{formatNumber(nearExpCt)}</strong><i className="d-hm-bar d-hm-amber" /></div>
+                <div className="d-hm"><span>Expired</span><strong className="tc-mag">{formatNumber(expiredCt)}</strong><i className="d-hm-bar d-hm-mag" /></div>
               </div>
             </div>
+          </div>
 
-            {/* Alert Severity Summary */}
-            <div className="summary-section">
-              <div className="summary-section-title">Alert Severity</div>
-              {Object.keys(severityCounts).length > 0 ? (
-                <div className="severity-bars">
-                  {Object.entries(severityCounts).map(([severity, count]) => (
-                    <div className="severity-bar-row" key={severity}>
-                      <span className="severity-bar-label">{severity}</span>
-                      <div className="severity-bar-track">
-                        <div
-                          className="severity-bar-fill"
-                          style={{
-                            width: `${Math.min((count / Math.max(alerts.length, 1)) * 100, 100)}%`,
-                            background: severity === 'CRITICAL' ? '#ef4444' : severity === 'HIGH' ? '#f97316' : '#f59e0b',
-                          }}
-                        />
-                      </div>
-                      <span className="severity-bar-count">{count}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="summary-empty">No active alerts</div>
-              )}
+          {/* WHAT NEEDS ATTENTION */}
+          <div className="d-card d-attention">
+            <div className="d-card-top">
+              <h3>What Needs My Attention</h3>
+              <button className="d-link" onClick={() => navigateTo('Alerts')}>All Alerts <Icon name="arrowUpRight" size={12} /></button>
             </div>
+            {lowStockList.length === 0 && pending.length === 0 ? (
+              <div className="d-empty"><Icon name="checkCircle" size={22} /><div><strong>All clear</strong><p>No low-stock or reorder issues.</p></div></div>
+            ) : (
+              <div className="d-att-list">
+                {lowStockList.slice(0, 5).map((p) => {
+                  const pct = Math.min((p.current_stock / Math.max(p.minimum_threshold, 1)) * 100, 100);
+                  const reorder = pending.find(r => r.product_id === p.product_id);
+                  return (
+                    <div className="d-att-item" key={p.product_id}>
+                      <div className="d-att-sev" />
+                      <div className="d-att-body">
+                        <div className="d-att-top-line">
+                          <strong>{p.product_name}</strong>
+                          <span className="d-att-stock">{formatNumber(p.current_stock)} / {formatNumber(p.minimum_threshold)}</span>
+                        </div>
+                        <div className="d-att-bar"><span style={{ width: `${pct}%` }} /></div>
+                        {reorder && (
+                          <div className="d-att-reorder">
+                            <Icon name="refreshCw" size={12} />
+                            Recommended reorder: <strong>+{formatNumber(reorder.recommended_quantity)} units</strong>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
-            {/* Category Breakdown */}
-            <div className="summary-section">
-              <div className="summary-section-title">Products by Category</div>
-              <div className="category-list">
-                {Object.entries(categoryCounts).map(([cat, count]) => (
-                  <div className="category-row" key={cat}>
-                    <span className="category-name">{cat}</span>
-                    <span className="category-count">{count}</span>
+          {/* INVENTORY MOVEMENT */}
+          <div className="d-card d-movement">
+            <div className="d-card-top">
+              <h3>Inventory Movement</h3>
+              <div className="d-period">
+                <button className={movePeriod === 7 ? 'active' : ''} onClick={() => setMovePeriod(7)}>7D</button>
+                <button className={movePeriod === 30 ? 'active' : ''} onClick={() => setMovePeriod(30)}>30D</button>
+              </div>
+            </div>
+            <div className="d-move-body">
+              <ResponsiveContainer width="100%" height={200}>
+                <AreaChart data={series} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gIn" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#451952" stopOpacity={0.22} /><stop offset="100%" stopColor="#451952" stopOpacity={0.02} /></linearGradient>
+                    <linearGradient id="gOut" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#F39F5A" stopOpacity={0.2} /><stop offset="100%" stopColor="#F39F5A" stopOpacity={0.02} /></linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(69,25,82,0.06)" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Area type="monotone" dataKey="Incoming" stroke="#451952" strokeWidth={2.5} fill="url(#gIn)" />
+                  <Area type="monotone" dataKey="Outgoing" stroke="#F39F5A" strokeWidth={2.5} fill="url(#gOut)" />
+                </AreaChart>
+              </ResponsiveContainer>
+              <div className="d-move-legend">
+                <div><i style={{ background: '#451952' }} /><span>Incoming</span><strong className="tc-purple">+{formatNumber(moveTotals.inc)}</strong></div>
+                <div><i style={{ background: '#F39F5A' }} /><span>Outgoing</span><strong className="tc-amber">-{formatNumber(moveTotals.outg)}</strong></div>
+                <div><i style={{ background: net >= 0 ? '#22c55e' : '#AC445A' }} /><span>Net</span><strong className={net >= 0 ? 'tc-green' : 'tc-rose'}>{net >= 0 ? '+' : ''}{formatNumber(net)}</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ──── RIGHT: SECONDARY SIDEBAR ──── */}
+        <div className="d-secondary">
+
+          {/* SMART INSIGHT */}
+          <div className={`d-card d-insight d-insight-${insight.tone}`}>
+            <div className="d-insight-inner">
+              <div className="d-insight-ic"><Icon name={insight.icon} size={22} /></div>
+              <div className="d-insight-text">
+                <h4>{insight.title}</h4>
+                <p>{insight.desc}</p>
+              </div>
+              <button className="d-insight-btn" onClick={() => navigateTo(insight.target)}>{insight.cta} <Icon name="arrowUpRight" size={11} /></button>
+            </div>
+          </div>
+
+          {/* EXPIRY RISK */}
+          <div className="d-card d-expiry">
+            <div className="d-card-top">
+              <h3>Expiry Risk</h3>
+              <button className="d-link" onClick={() => navigateTo('Inventory Overview')}>View All <Icon name="arrowUpRight" size={12} /></button>
+            </div>
+            {expiryProducts.length === 0 ? (
+              <div className="d-empty sm"><Icon name="checkCircle" size={18} /><div><strong>No risks</strong></div></div>
+            ) : (
+              <div className="d-exp-list">
+                {expiredList.slice(0, 2).map((p) => (
+                  <div className="d-exp-row expired" key={p.product_id}>
+                    <div className="d-exp-info"><strong>{p.product_name}</strong><span>{formatDateOnly(p.expiry_date)}</span></div>
+                    <span className="d-exp-tag expired">Expired</span>
+                  </div>
+                ))}
+                {nearExpiryList.slice(0, 4).map((p) => (
+                  <div className="d-exp-row near" key={p.product_id}>
+                    <div className="d-exp-info"><strong>{p.product_name}</strong><span>{formatDateOnly(p.expiry_date)}</span></div>
+                    <span className="d-exp-tag near">{p.daysLeft}d left</span>
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+
+          {/* REORDER SUMMARY */}
+          <div className="d-card d-reorder">
+            <div className="d-card-top">
+              <h3>Reorder Summary</h3>
+              <button className="d-link" onClick={() => navigateTo('Reorder Management')}>Manage <Icon name="arrowUpRight" size={12} /></button>
             </div>
+            <div className="d-ro-grid">
+              <div className="d-ro-s"><strong className="tc-amber">{formatNumber(reorderSum.pending_reorders || pending.length)}</strong><span>Pending</span></div>
+              <div className="d-ro-s"><strong className="tc-purple">{formatNumber(reorderSum.ordered_reorders || 0)}</strong><span>Ordered</span></div>
+              <div className="d-ro-s"><strong className="tc-green">{formatNumber(reorderSum.completed_reorders || 0)}</strong><span>Completed</span></div>
+              <div className="d-ro-s"><strong>{formatNumber(reorderSum.total_recommended_units || 0)}</strong><span>Total Units</span></div>
+            </div>
+            {pending.length > 0 && (
+              <div className="d-ro-items">
+                {pending.slice(0, 3).map((r) => (
+                  <div className="d-ro-row" key={r.recommendation_id}>
+                    <span className="d-ro-name">{productName(r)}</span>
+                    <span className="d-ro-badge">+{formatNumber(r.recommended_quantity)}</span>
+                    <span className="d-ro-status">PENDING</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* RECENT ACTIVITY */}
+          <div className="d-card d-activity">
+            <div className="d-card-top">
+              <h3>Recent Activity</h3>
+              <button className="d-link" onClick={() => navigateTo('Inventory Simulator')}>View All <Icon name="arrowUpRight" size={12} /></button>
+            </div>
+            {inOut.length === 0 ? (
+              <div className="d-empty sm"><Icon name="inbox" size={18} /><div><strong>No activity</strong></div></div>
+            ) : (
+              <div className="d-act-list">
+                {inOut.slice(0, 6).map((tx) => {
+                  const isIn = tx.transaction_type === 'IN';
+                  return (
+                    <div className="d-act-row" key={tx.transaction_id}>
+                      <strong className={isIn ? 'tc-purple' : 'tc-rose'}>{isIn ? '+' : '-'}{formatNumber(Math.abs(tx.quantity || 0))}</strong>
+                      <div className="d-act-info"><span className="d-act-name">{productName(tx)}</span><span className="d-act-date">{formatDate(tx.created_at)}</span></div>
+                      <span className={`d-act-type ${isIn ? 'in' : 'out'}`}>{isIn ? 'IN' : 'OUT'}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* ════ QUICK ACTIONS ════ */}
+      <section className="d-card d-quick">
+        <div className="d-quick-row">
+          <button onClick={() => navigateTo('Inventory Overview')}><div className="d-q-ic d-ic-purple"><Icon name="plus" size={16} /></div><strong>Add Product</strong></button>
+          <button onClick={() => navigateTo('Inventory Simulator')}><div className="d-q-ic d-ic-amber"><Icon name="activity" size={16} /></div><strong>Record Transaction</strong></button>
+          <button onClick={() => navigateTo('Reorder Management')}><div className="d-q-ic d-ic-rose"><Icon name="refreshCw" size={16} /></div><strong>Review Reorders</strong></button>
+          <button onClick={() => navigateTo('Alerts')}><div className="d-q-ic d-ic-green"><Icon name="bell" size={16} /></div><strong>View Alerts</strong></button>
+        </div>
+      </section>
     </div>
   );
 }
