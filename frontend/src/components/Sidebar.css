@@ -87,8 +87,8 @@
   border: none;
   background: transparent;
   color: var(--sidebar-text);
-  font-size: 0.88rem;
-  font-weight: 500;
+  font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
   border-radius: var(--radius-md);
   transition: all var(--transition);

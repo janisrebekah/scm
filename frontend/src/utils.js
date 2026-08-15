@@ -42,8 +42,18 @@ export function productName(row) {
 
 /* ── Expiry helpers ──────────────────────────────────────── */
 
-/** Near-expiry threshold in days (centralized, easily changeable) */
-export const NEAR_EXPIRY_DAYS = 30;
+/** Near-expiry threshold in calendar months (centralized, easily changeable) */
+export const NEAR_EXPIRY_MONTHS = 3;
+
+function addCalendarMonths(date, months) {
+  const next = new Date(date);
+  const originalDay = next.getDate();
+  next.setDate(1);
+  next.setMonth(next.getMonth() + months);
+  const lastDayOfTargetMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+  next.setDate(Math.min(originalDay, lastDayOfTargetMonth));
+  return next;
+}
 
 export function getExpiryStatus(expiryDate) {
   if (!expiryDate) return null;
@@ -51,9 +61,9 @@ export function getExpiryStatus(expiryDate) {
   today.setHours(0, 0, 0, 0);
   const expiry = new Date(expiryDate);
   expiry.setHours(0, 0, 0, 0);
-  const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return 'expired';
-  if (diffDays <= NEAR_EXPIRY_DAYS) return 'near-expiry';
+  const nearExpiryCutoff = addCalendarMonths(today, NEAR_EXPIRY_MONTHS);
+  if (expiry < today) return 'expired';
+  if (expiry <= nearExpiryCutoff) return 'near-expiry';
   return 'safe';
 }
 

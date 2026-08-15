@@ -152,7 +152,7 @@
   border-radius: 10px;
   background: #1D1A39;
   color: #fff;
-  font-size: 0.84rem;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s;
@@ -175,7 +175,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.84rem;
+  font-size: 14px;
   font-weight: 700;
 }
 .sim-result-inner svg { flex-shrink: 0; }
@@ -214,7 +214,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   color: #6b7280;
   font-weight: 600;
 }
@@ -256,7 +256,7 @@
 }
 .sim-log-count {
   color: #9ca3af;
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   font-weight: 700;
 }
 
@@ -279,7 +279,7 @@
   border-radius: 8px;
   background: transparent;
   color: #9ca3af;
-  font-size: 0.74rem;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s;
@@ -299,7 +299,7 @@
   border-radius: 8px;
   background: var(--card-bg);
   color: #451952;
-  font-size: 0.72rem;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s;
@@ -323,7 +323,7 @@
   padding: 10px 14px;
   background: #faf9fc;
   color: #9ca3af;
-  font-size: 0.68rem;
+  font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -333,13 +333,14 @@
 .sim-log-table td {
   padding: 10px 14px;
   border-bottom: 1px solid var(--card-border);
-  font-size: 0.82rem;
+  font-size: 14px;
   color: #1D1A39;
   font-weight: 600;
 }
 .sim-log-table tbody tr:hover { background: #faf9fc; }
-.sim-log-date { color: #9ca3af; font-size: 0.74rem !important; }
+.sim-log-date { color: #9ca3af; font-size: 13px !important; }
 .sim-log-product {
+  font-size: 14.5px;
   max-width: 200px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -348,7 +349,7 @@
   display: inline-block;
   padding: 3px 9px;
   border-radius: 6px;
-  font-size: 0.64rem;
+  font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -377,7 +378,7 @@
   border-radius: 8px;
   background: var(--card-bg);
   color: #451952;
-  font-size: 0.72rem;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, opacity 0.15s;
@@ -395,7 +396,7 @@
 
 .sim-page-indicator {
   color: #6b7280;
-  font-size: 0.74rem;
+  font-size: 0.78rem;
   font-weight: 700;
 }
 
@@ -406,7 +407,7 @@
   gap: 8px;
   padding: 40px 20px;
   color: #9ca3af;
-  font-size: 0.82rem;
+  font-size: 0.84rem;
 }
 .sim-log-empty {
   display: flex;
