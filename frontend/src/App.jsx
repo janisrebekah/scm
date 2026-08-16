@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchDashboardSummary } from './api';
+import { API_BASE, fetchDashboardSummary } from './api';
 import './App.css';
 
 /* Components */
@@ -63,7 +63,7 @@ function App() {
         return;
       }
       try {
-        const response = await fetch('/api/auth/me', {
+        const response = await fetch(`${API_BASE}/api/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!response.ok) {
